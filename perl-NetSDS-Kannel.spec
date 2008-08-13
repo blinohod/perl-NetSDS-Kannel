@@ -1,6 +1,6 @@
 %define module NetSDS-Kannel
 
-Name: perl-NetSDS-Kannel
+Name: perl-%module
 Version: 0.1
 Release: alt1
 
@@ -19,7 +19,7 @@ BuildRequires: perl-devel
 None.
 
 %prep
-%setup -q -n %module
+%setup -q -n %module-%version
 
 %build
 %perl_vendor_build
