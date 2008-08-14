@@ -12,6 +12,7 @@ Packager: Michael Bochkaryov <misha@altlinux.ru>
 Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
+BuildPreReq: perl-Log-Agent perl-Module-Build perl-NetSDS-Messaging perl-Test-Pod perl-Test-Pod-Coverage
 # Automatically added by buildreq on Wed Nov 06 2002
 BuildRequires: perl-devel
 
