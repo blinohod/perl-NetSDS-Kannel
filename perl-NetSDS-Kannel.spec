@@ -32,3 +32,6 @@ None.
 %perl_vendor_man3dir/*
 
 %changelog
+* Fri Aug 15 2008 Michael Bochkaryov <misha@altlinux.ru> 0.1-alt1
+- Initial Kannel API
+

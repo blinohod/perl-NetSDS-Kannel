@@ -7,49 +7,65 @@
 #        NOTES:  This is NetSDS specific implementation
 #       AUTHOR:  Michael Bochkaryov (Rattler), <misha@rattler.kiev.ua>
 #      COMPANY:  Net.Style
-#      VERSION:  1.0
+#      VERSION:  1.1
 #      CREATED:  16.06.2008 11:08:15 EEST
-#     REVISION:  $Id: Kannel.pm 40 2008-06-23 07:12:35Z misha $
 #===============================================================================
 
 =head1 NAME
 
-NetSDS::Message::Kannel
+NetSDS::Kannel - Kannel SMS gateway API
 
 =head1 SYNOPSIS
 
-	use NetSDS::Message::Kannel;
+	use NetSDS::Kannel;
+	use NetSDS::Message::SMS;
+
+	my $kannel = NetSDS::Kannel->new(
+		kannel_url => 'http://localhost:1234/sendsms',
+		kannel_user => 'sender',
+		kannel_passwd => 'secret',
+		default_smsc => 'esme-megafon',
+	);
+
+	my $sms = NetSDS::Message::SMS->new(
+		$sms_params
+	);
+
+	$res = $kannel->send(
+		message => $sms,
+		smsc => 'emse-mts',
+		priority => 3,
+	);
 
 =head1 DESCRIPTION
 
-C<NetSDS> module contains superclass all other classes should be inherited from.
+C<NetSDS::Kannel> module provides API to Kannel SMS gateway.
+
+To decrease innecessary problems we use a lot of predefined parameters
+while sending and receiving messages via Kannel HTTP API. It's not so flexible
+as direct HTTP processing but less expensive in development time ;-)
+
+This modules uses LWP to send messages and CGI.pm to process messages from Kannel.
 
 =cut
 
-package NetSDS::Message::Kannel;
+package NetSDS::Kannel;
 
 use 5.8.0;
 use strict;
 use warnings;
 
 use NetSDS::Util::Text qw(text_recode);
+use NetSDS::Messaging::Const;
+use NetSDS::Message::SMS;
+use LWP::UserAgent;
+use URI::Escape;
 
-use base qw(NetSDS::Message);
+use base qw(NetSDS::Class::Abstract);
 
-our $VERSION = "1.0";
+our $VERSION = "1.1";
 
-our @EXPORT_OK = qw(
-  COD_7BIT
-  COD_8BIT
-  COD_UCS2
-);
-
-# Message encoding
-use constant COD_7BIT => '0';
-use constant COD_8BIT => '1';
-use constant COD_UCS2 => '2';
-
-use constant DLR_UNDELIVERABLE => 'UNDELIV';
+use constant USER_AGENT => 'NetSDS Kannel API';
 
 #===============================================================================
 #
@@ -58,11 +74,23 @@ use constant DLR_UNDELIVERABLE => 'UNDELIV';
 
 =over
 
-=item B<new([...])>
+=item B<new([...])> - constructor
 
-Common constructor for all objects inherited from Wono.
+Constructor creates Kannel API handler and set configuration for it.
 
-    my $object = Wono::SomeClass->new(%options);
+Parameters:
+
+* sendsms_url
+
+* sendsms_user
+
+* sendsms_passwd
+
+* dlr_url
+
+* default_smsc
+
+* default_timeout
 
 =cut
 
@@ -72,21 +100,31 @@ sub new {
 	my ( $class, %params ) = @_;
 
 	my $this = $class->SUPER::new(
-		content => {
-			udh  => undef,
-			body => '',
-		},
-		media   => 'sms',
-		coding  => COD_7BIT,
-		charset => 'WINDOWS-1252',
-		meta    => {},
-		smsc    => undef,
-
+		admin_url       => 'http://127.0.0.1:1300/',
+		admin_user      => 'admin',
+		admin_passwd    => '',
+		sendsms_url     => 'http://127.0.0.1:13013/cgi-bin/sendsms',
+		sendsms_user    => 'netsds',
+		sendsms_passwd  => '',
+		dlr_url         => 'http://127.0.0.1/smsc/kannel_receiver.fcgi',
+		default_smsc    => undef,
+		default_timeout => 30,                                             # 30 seconds enough for sending timeout
+		%params,
 	);
 
 	return $this;
 
 } ## end sub new
+
+__PACKAGE__->mk_accessors('admin_url');
+__PACKAGE__->mk_accessors('admin_user');
+__PACKAGE__->mk_accessors('admin_passwd');
+__PACKAGE__->mk_accessors('sendsms_url');
+__PACKAGE__->mk_accessors('sendsms_user');
+__PACKAGE__->mk_accessors('sendsms_passwd');
+__PACKAGE__->mk_accessors('dlr_url');
+__PACKAGE__->mk_accessors('default_smsc');
+__PACKAGE__->mk_accessors('default_timeout');
 
 #***********************************************************************
 
@@ -94,20 +132,139 @@ sub new {
 
 =over
 
-=item B<import_cgi($cgi)> - import message from CGI object
+=item send(%parameters) - send message to Kannel
 
-This method provides import message structure from CGI request.
+This method allows to send SMS message via Kannel SMS gateway.
+
+Parameters:
+
+* message - NetSDS::Message::SMS object
+
+* from - source address (overrides message)
+
+* to - destination address (overrides message)
+
+* smsc - target SMSC (overrides default one)
+
+	$kannel->send_sms(
+		from => '1234',
+		to => '380672206770',
+		text => 'Wake up!!!',
+		smsc => 'nokia_modem',
+	);
 
 =cut
 
 #-----------------------------------------------------------------------
 
-sub import_cgi {
+sub send {
+
+	my ( $this, %params ) = @_;
+
+	my %send = (
+		username => $this->sendsms_user,
+		password => $this->sendsms_passwd,
+	);
+
+	# First try to parse SMS message
+	if ( $params{message} and ( ref $params{message} eq 'NetSDS::Message::SMS' ) ) {
+
+		my $msg = $params{message};
+
+		if ( $msg->from ) {
+			$send{from} = uri_escape( $msg->from_native );
+		}
+
+		if ( $msg->to ) {
+			$send{to} = uri_escape( '+' . $msg->to_native );
+		}
+
+		if ( $msg->udh ) {
+			$send{udh} = uri_escape( $msg->udh );
+		}
+
+		if ( $msg->ud ) {
+			$send{text} = uri_escape( $msg->ud );
+		}
+
+	} ## end if ( $params{message} ...
+
+	# Then we override message parameters
+
+	# Set sendsms URL
+	my $send_url = $this->sendsms_url;
+	if ( $params{sendsms_url} ) {
+		$send_url = $params{sendsms_url};
+	}
+
+	# Set sendsms username
+	if ( $params{sendsms_user} ) {
+		$send{username} = $params{sendsms_user};
+	}
+
+	# Set sendsms password
+	if ( $params{sendsms_passwd} ) {
+		$send{password} = $params{sendsms_passwd};
+	}
+
+	# Set source address
+	if ( $params{from} ) {
+		$send{from} = uri_escape( $params{from} );
+	}
+
+	# Set destination address
+	if ( $params{to} ) {
+		$send{to} = uri_escape( $params{to} );
+	}
+
+	# Set message text
+	if ( $params{text} ) {
+		$send{text} = uri_escape( $params{text} );
+	}
+
+	# Prepare sending user agent
+	my $ua = LWP::UserAgent->new();
+	$ua->agent( USER_AGENT . "/$VERSION" );
+
+	# Set HTTP timeout
+	my $timeout = $this->default_timeout;
+	if ( $params{timeout} ) {
+		$timeout = $params{timeout};
+	}
+	$ua->timeout($timeout);
+
+	# Prepare HTTP request
+	my @pairs = map $_ . '=' . $send{$_}, keys %send;
+	my $req = HTTP::Request->new( GET => $send_url . "?" . join '&', @pairs );
+
+	my $res = $ua->request($req);
+
+	if ( $res->is_success ) {
+		return $res->content;
+	} else {
+		return $this->error( $res->status_line );
+	}
+
+} ## end sub send
+
+#***********************************************************************
+
+=item B <receive($cgi)> - import message from CGI object
+
+  This method provides import message structure from CGI request .
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub receive {
 
 	my ( $this, $cgi ) = @_;
 
+	my $msg = NetSDS::Message::SMS->new();
+
 	# Set message type (MO or DLR)
-	if ( $cgi->param('type') and ( $cgi->param('type') =~ /^(mo|dlr)$/ ) ) {
+	if ( $cgi->param('type') and ( $cgi->param('type') =~ / ^ ( mo | dlr ) $/ ) ) {
 		$this->type( $cgi->param('type') );
 	} else {
 		$this->type('mo');
@@ -195,7 +352,7 @@ sub import_cgi {
 		}
 	}
 
-} ## end sub import_cgi
+} ## end sub receive
 
 1;
 
@@ -223,5 +380,4 @@ None
 Michael Bochkaryov <misha@rattler.kiev.ua>
 
 =cut
-
 
