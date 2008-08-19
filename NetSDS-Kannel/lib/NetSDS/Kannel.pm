@@ -56,16 +56,34 @@ use strict;
 use warnings;
 
 use NetSDS::Util::Text qw(text_recode);
+use NetSDS::Util::Misc qw(str2uri uri2str);
 use NetSDS::Messaging::Const;
 use NetSDS::Message::SMS;
 use LWP::UserAgent;
 use URI::Escape;
 
-use base qw(NetSDS::Class::Abstract);
+use base qw(
+  NetSDS::Class::Abstract
+  Exporter
+);
 
 our $VERSION = "1.1";
 
 use constant USER_AGENT => 'NetSDS Kannel API';
+
+our @EXPORT = qw(
+  STATE_DELIVERED
+  STATE_UNDELIVERABLE
+  STATE_ENROUTE
+  STATE_ACCEPTED
+  STATE_REJECTED
+);
+
+use constant STATE_DELIVERED     => 1;
+use constant STATE_UNDELIVERABLE => 2;
+use constant STATE_ENROUTE       => 4;
+use constant STATE_ACCEPTED      => 8;
+use constant STATE_REJECTED      => 16;
 
 #===============================================================================
 #
@@ -91,6 +109,8 @@ Parameters:
 * default_smsc
 
 * default_timeout
+
+=back
 
 =cut
 
@@ -136,13 +156,19 @@ __PACKAGE__->mk_accessors('default_timeout');
 
 This method allows to send SMS message via Kannel SMS gateway.
 
-Parameters:
+Parameters (mostly the same as in Kannel sendsms API):
 
 * message - NetSDS::Message::SMS object
 
 * from - source address (overrides message)
 
 * to - destination address (overrides message)
+
+* text - message text (URI escaped)
+
+* charset - charset of text
+
+* coding - 0 for GSM 03.38, 1 for binary, 2 for UCS2
 
 * smsc - target SMSC (overrides default one)
 
@@ -162,8 +188,13 @@ sub send {
 	my ( $this, %params ) = @_;
 
 	my %send = (
-		username => $this->sendsms_user,
-		password => $this->sendsms_passwd,
+		'username' => $this->sendsms_user,
+		'password' => $this->sendsms_passwd,
+		'charset'  => 'UTF-8',                 # Local text representation
+		'coding'   => COD_7BIT,                # 7 bit GSM 03.38
+		'priority' => 1,                       # Interactive in accordance with SMPP 3.4
+		'validity' => 360,                     # 6 hours
+		'dlr-mask' => 19,
 	);
 
 	# First try to parse SMS message
@@ -222,11 +253,56 @@ sub send {
 		$send{text} = uri_escape( $params{text} );
 	}
 
+	# Set message UDH
+	if ( $params{udh} ) {
+		$send{udh} = uri_escape( $params{udh} );
+	}
+
+	# Set message charset
+	if ( $params{charset} ) {
+		$send{charset} = $params{charset};
+	}
+
+	# Set data coding
+	if ( $params{coding} ) {
+		$send{coding} = $params{coding};
+	}
+
+	# Set message TTL in minutes
+	if ( $params{validity} and ( is_int( $params{validity} ) ) ) {
+		$send{validity} = $params{validity};
+	}
+
+	# Set deferred delivery in minutes
+	if ( $params{deferred} and ( is_int( $params{deferred} ) ) ) {
+		$send{deferred} = $params{deferred};
+	}
+
+	# Set message priority (0 to 3)
+	if ( defined $params{priority} and ( is_int( $params{priority} ) and ( $params{priority} <= 3 ) and ( $params{priority} >= 0 ) ) ) {
+		$send{priority} = $params{priority};
+	}
+
+	# Set SMSC id
+	if ( $params{smsc} ) {
+		$send{smsc} = $params{smsc};
+	}
+
+	# Set SMSC id
+	if ( $params{dlr_mask} ) {
+		$send{'dlr-mask'} = $params{dlr_mask};
+	}
+
+	# Set meta data
+	if ( $params{meta} ) {
+		$send{'meta-data'} = $this->make_meta( %{ $params{meta} } );
+	}
+
 	# Prepare sending user agent
 	my $ua = LWP::UserAgent->new();
 	$ua->agent( USER_AGENT . "/$VERSION" );
 
-	# Set HTTP timeout
+	# Set HTTP request timeout
 	my $timeout = $this->default_timeout;
 	if ( $params{timeout} ) {
 		$timeout = $params{timeout};
@@ -237,8 +313,10 @@ sub send {
 	my @pairs = map $_ . '=' . $send{$_}, keys %send;
 	my $req = HTTP::Request->new( GET => $send_url . "?" . join '&', @pairs );
 
+	# Send request
 	my $res = $ua->request($req);
 
+	# Analyze response
 	if ( $res->is_success ) {
 		return $res->content;
 	} else {
@@ -249,9 +327,12 @@ sub send {
 
 #***********************************************************************
 
-=item B <receive($cgi)> - import message from CGI object
+=item B<receive($cgi)> - receive MO or DLR from CGI object
 
-  This method provides import message structure from CGI request .
+ This method provides import message structure from CGI request .
+
+	my $cgi = CGI::Fast->new();
+	my %ret = $kannel->receive($cgi);
 
 =cut
 
@@ -261,98 +342,257 @@ sub receive {
 
 	my ( $this, $cgi ) = @_;
 
-	my $msg = NetSDS::Message::SMS->new();
+	my %ret = ();
 
 	# Set message type (MO or DLR)
-	if ( $cgi->param('type') and ( $cgi->param('type') =~ / ^ ( mo | dlr ) $/ ) ) {
-		$this->type( $cgi->param('type') );
+	if ( $cgi->param('type') ) {
+		if ( $cgi->param('type') eq 'mo' ) {
+			%ret = $this->receive_mo($cgi);
+		} elsif ( $cgi->param('type') eq 'mo' ) {
+			%ret = $this->receive_dlr($cgi);
+		}
+
+		return %ret;
+
 	} else {
-		$this->type('mo');
+		return $this->error("Unknown message type received");
 	}
 
-	# Set message Id
-	if ( $cgi->param('msgid') ) {
-		$this->msgid( $cgi->param('msgid') );
+} ## end sub receive
+
+#***********************************************************************
+
+=item B<receive_mo($cgi)> - import MO message from CGI object
+
+  This method provides import message structure from CGI request .
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub receive_mo {
+
+	my ( $this, $cgi ) = @_;
+
+	my %ret = (
+		type => 'mo',
+	);
+
+	# Set SMSC Id (smsc=%i)
+	if ( $cgi->param('smsc') ) {
+		$ret{smsc} = $cgi->param('smsc');
 	} else {
-		$this->msgid(undef);
+		$ret{smsc} = undef;
 	}
 
-	# Set source (subscriber) address
+	# Set SMSC message Id (smsid=%I)
+	if ( $cgi->param('smsid') ) {
+		$ret{smsid} = $cgi->param('smsid');
+	} else {
+		$ret{smsid} = undef;
+	}
+
+	# Set source (subscriber) address (from=%p)
 	if ( $cgi->param('from') ) {
-		$this->from( $cgi->param('from') );
+		$ret{from} = $cgi->param('from');
 	}
 
-	# Set destination (service) address
+	# Set destination (service) address (to=%P)
 	if ( $cgi->param('to') ) {
-		$this->to( $cgi->param('to') );
+		$ret{to} = $cgi->param('to');
 	}
 
-	# Set timestamp information
-	if ( $cgi->param('timestamp') ) {
-		$this->timestamp( $cgi->param('timestamp') );
+	# Set timestamp information (time=%t)
+	if ( $cgi->param('time') ) {
+		$ret{time} = $cgi->param('time');
 	}
 
-	# Set billing information
+	# Set UNIX timestamp information (unixtime=%T)
+	if ( $cgi->param('unixtime') ) {
+		$ret{unixtime} = $cgi->param('unixtime');
+	}
+
+	# Set message text (text=%a)
+	if ( $cgi->param('text') ) {
+		$ret{text} = $cgi->param('text');
+	}
+
+	# Set binary message (bin=%b)
+	if ( $cgi->param('bin') ) {
+		$ret{bin} = $cgi->param('bin');
+	}
+
+	# Set UDH (udh=%u)
+	if ( $cgi->param('udh') ) {
+		$ret{udh} = $cgi->param('udh');
+	}
+
+	# Set coding (coding=%c)
+	if ( $cgi->param('coding') ) {
+		$ret{coding} = $cgi->param('coding');
+	}
+
+	# Set charset (charset=%C)
+	if ( $cgi->param('charset') ) {
+		$ret{charset} = $cgi->param('charset');
+	}
+
+	# Set billing information (binfo=%B)
 	if ( $cgi->param('binfo') ) {
-		$this->binfo( $cgi->param('binfo') );
+		$ret{binfo} = $cgi->param('binfo');
 	}
 
-	# Process optional SMPP TLV
+	# Convert message text to UTF-8
+	if ( $ret{coding} ne COD_8BIT ) {
+		# It's text message
+		$ret{text} = text_recode( $ret{text}, $ret{charset} );
+	}
+
+	# Process optional SMPP TLV (meta=%D)
 	if ( $cgi->param('meta') ) {
 		my $meta_str = $cgi->param('meta');
-		my %meta     = ();
+		$ret{meta} = {};
 		if ( $meta_str =~ /^\?smpp\?(.*)$/ ) {
 			foreach my $tlv_par ( split /\&/, $1 ) {
 				my ( $tag, $val ) = split /\=/, $tlv_par;
-				$this->{meta}->{$tag} = $val;
+				$ret{meta}->{$tag} = $val;
 			}
 		}
 	}
 
-	# Process message type specific information
+	return %ret;
 
-	if ( $this->type eq 'mo' ) {
+} ## end sub receive_mo
 
-		# Process MO SM
-		my $charset = $cgi->param('charset');
-		my $coding  = $cgi->param('coding');
-		my $text    = $cgi->param('text');
-		my $udh     = $cgi->param('udh');
-		my $bindata = $cgi->param('bindata');
+#***********************************************************************
 
-		if ( $coding ne COD_8BIT ) {
-			# It's text message
-			text_recode( $text, $charset );
-			$this->{content}->{body} = $text;
+=item B<receive_dlr($cgi)> - import message from CGI object
 
-		} else {
-			# It's binary message
-			$this->{content}->{udh}  = $udh;
-			$this->{content}->{body} = $bindata;
-		}
+  This method provides import message structure from CGI request .
 
-		# Set user data headers
-		if ($udh) {
-			$this->{content}->{udh} = $udh;
-		}
 
-	} elsif ( $this->type eq 'dlr' ) {
-		# Process DLR
+=cut
 
-		my $ref_id   = $cgi->param('refid');
-		my $dlr_code = $cgi->param('dlr');
-		my $dlr_msg  = $cgi->param('dlrmsg');
+#-----------------------------------------------------------------------
 
-		if ($dlr_code) {
-			$this->{dlr_code} = $dlr_code;
-		}
+sub receive_dlr {
 
-		if ($dlr_msg) {
-			$this->{dlr_msg} = $dlr_msg;
-		}
+	my ( $this, $cgi ) = @_;
+
+	my %ret = (
+		type => 'dlr',
+	);
+
+	# Set SMSC Id (smsc=%i)
+	if ( $cgi->param('smsc') ) {
+		$ret{smsc} = $cgi->param('smsc');
+	} else {
+		$ret{smsc} = undef;
 	}
 
-} ## end sub receive
+	# Set SMSC message Id (msgid=our_id)
+	if ( $cgi->param('msgid') ) {
+		$ret{msgid} = $cgi->param('msgid');
+	} else {
+		$ret{msgid} = undef;
+	}
+
+	# Set SMSC message Id (smsid=%I)
+	if ( $cgi->param('smsid') ) {
+		$ret{smsid} = $cgi->param('smsid');
+	} else {
+		$ret{smsid} = undef;
+	}
+
+	# Set source (subscriber) address (from=%p)
+	if ( $cgi->param('from') ) {
+		$ret{from} = $cgi->param('from');
+	}
+
+	# Set destination (service) address (to=%P)
+	if ( $cgi->param('to') ) {
+		$ret{to} = $cgi->param('to');
+	}
+
+	# Set timestamp information (time=%t)
+	if ( $cgi->param('time') ) {
+		$ret{time} = $cgi->param('time');
+	}
+
+	# Set UNIX timestamp information (unixtime=%T)
+	if ( $cgi->param('unixtime') ) {
+		$ret{unixtime} = $cgi->param('unixtime');
+	}
+
+	# Set DLR state (dlr=%d)
+	$ret{dlr_state} = $cgi->param('dlr');
+
+	# Set DLR message (dlrmsg=%A)
+	$ret{dlr_msg} = $cgi->param('dlrmsg');
+
+	# Process return code if not success
+	if ( $ret{dlr_msg} =~ /^NACK\/(\d+)\// ) {
+		$this->{reject_code} = $1;
+	}
+
+	return %ret;
+
+} ## end sub receive_dlr
+
+#***********************************************************************
+
+=item B<make_dlr_url(%params)> - prepare DLR URL
+
+Paramters: hash (dlr_url, msgid)
+
+Returns: URI escaped DLR URL
+
+=cut 
+
+#-----------------------------------------------------------------------
+
+sub make_dlr_url {
+
+	my ( $this, %params ) = @_;
+
+	my $msgid = $params{msgid};
+
+	my $dlr_url = $this->{dlr_url} . "?msgid=$msgid&smsid=%I&from=%p&to=%P&time=%t&unixtime=%T&dlr=%d&dlrmsg=%A";
+
+	return str2uri($dlr_url);
+
+}
+
+#***********************************************************************
+
+=item B<make_meta(%params)> - prepare SMPP optional TLV
+
+Paramters: hash of TLV pairs
+
+Returns: URI escaped string
+
+	my $meta = $this->make_meta(
+		charging_id => '0',
+	);
+
+This will return: %3Fsmpp%3Fcharging_id%3D0
+
+=cut 
+
+#-----------------------------------------------------------------------
+
+sub make_meta {
+
+	my ( $this, %params ) = @_;
+
+	my $meta_str = '?smpp?';    # FIXME: only 'smpp' group allowed
+
+	my @pairs = map $_ . '=' . $params{$_}, keys %params;
+	$meta_str .= join '&', @pairs;
+
+	return str2uri($meta_str);
+
+}
 
 1;
 
@@ -362,6 +602,7 @@ __END__
 
 =head1 EXAMPLES
 
+See Nibelite kannel API
 
 =head1 BUGS
 
