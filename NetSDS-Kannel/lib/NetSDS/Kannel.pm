@@ -77,13 +77,39 @@ our @EXPORT = qw(
   STATE_ENROUTE
   STATE_ACCEPTED
   STATE_REJECTED
+  ESME_RINVMSGLEN
+  ESME_RINVCMDID
+  ESME_RINVBNDSTS
+  ESME_RSYSERR
+  ESME_RINVDSTADR
+  ESME_RMSGQFUL
+  ESME_RTHROTTLED
+  ESME_RUNKNOWNERR
+  ESME_RTIMEOUT
+  ESME_LICENSE
+  ESME_CHARGING
 );
 
-use constant STATE_DELIVERED     => 1;
-use constant STATE_UNDELIVERABLE => 2;
-use constant STATE_ENROUTE       => 4;
-use constant STATE_ACCEPTED      => 8;
-use constant STATE_REJECTED      => 16;
+# SMS delivery states
+use constant STATE_DELIVERED     => 1;     # Delivered to MS
+use constant STATE_UNDELIVERABLE => 2;     # Undeliverable
+use constant STATE_ENROUTE       => 4;     # Queued on SMSC
+use constant STATE_ACCEPTED      => 8;     # Received by SMSC
+use constant STATE_REJECTED      => 16;    # Rejected by SMSC
+
+# Reject codes from SMSC
+
+use constant ESME_RINVMSGLEN  => 1;        # Wrong length
+use constant ESME_RINVCMDID   => 3;        # Wrong SMPP command
+use constant ESME_RINVBNDSTS  => 4;
+use constant ESME_RSYSERR     => 8;
+use constant ESME_RINVDSTADR  => 11;
+use constant ESME_RMSGQFUL    => 20;
+use constant ESME_RTHROTTLED  => 88;
+use constant ESME_RUNKNOWNERR => 255;
+use constant ESME_RTIMEOUT    => 1057;
+use constant ESME_LICENSE     => 1058;
+use constant ESME_CHARGING    => 1059;
 
 #===============================================================================
 #
