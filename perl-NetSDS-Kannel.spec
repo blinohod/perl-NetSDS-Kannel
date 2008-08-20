@@ -9,6 +9,8 @@ Group: Development/Perl
 License: GPL
 Packager: Michael Bochkaryov <misha@altlinux.ru>
 
+BuildArch: noarch
+
 Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
