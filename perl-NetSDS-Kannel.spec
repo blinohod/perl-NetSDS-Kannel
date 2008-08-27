@@ -2,13 +2,14 @@
 
 Name: perl-%module
 Version: 0.1
-Release: alt1
+Release: alt2
 
 Summary: NetSDS Kannel API
 Group: Development/Perl
 License: GPL
 Packager: Michael Bochkaryov <misha@altlinux.ru>
 
+BuildArch: noarch
 Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
@@ -33,6 +34,9 @@ None.
 %perl_vendor_man3dir/*
 
 %changelog
+* Thu Aug 28 2008 Grigory Milev <week@altlinux.ru> 0.1-alt2
+- add noarch arch :)
+
 * Fri Aug 15 2008 Michael Bochkaryov <misha@altlinux.ru> 0.1-alt1
 - Initial Kannel API
 
