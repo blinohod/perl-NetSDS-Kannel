@@ -374,7 +374,7 @@ sub receive {
 	if ( $cgi->param('type') ) {
 		if ( $cgi->param('type') eq 'mo' ) {
 			%ret = $this->receive_mo($cgi);
-		} elsif ( $cgi->param('type') eq 'mo' ) {
+		} elsif ( $cgi->param('type') eq 'dlr' ) {
 			%ret = $this->receive_dlr($cgi);
 		}
 
@@ -503,7 +503,7 @@ sub receive_mo {
 
 sub receive_dlr {
 
-	my ( $this, $cgi ) = @_;
+	my ($this, $cgi ) = @_;
 
 	my %ret = (
 		type => 'dlr',
