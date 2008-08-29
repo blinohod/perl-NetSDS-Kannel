@@ -1,0 +1,7 @@
+Build.PL
+lib/NetSDS/Kannel.pm
+MANIFEST			This list of files
+samples/test_send.pl
+Makefile.PL
+README
+META.yml

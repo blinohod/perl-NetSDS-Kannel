@@ -1,0 +1,123 @@
+NAME
+    NetSDS::Kannel - Kannel SMS gateway API
+
+SYNOPSIS
+            use NetSDS::Kannel;
+            use NetSDS::Message::SMS;
+
+            my $kannel = NetSDS::Kannel->new(
+                    kannel_url => 'http://localhost:1234/sendsms',
+                    kannel_user => 'sender',
+                    kannel_passwd => 'secret',
+                    default_smsc => 'esme-megafon',
+            );
+
+            my $sms = NetSDS::Message::SMS->new(
+                    $sms_params
+            );
+
+            $res = $kannel->send(
+                    message => $sms,
+                    smsc => 'emse-mts',
+                    priority => 3,
+            );
+
+DESCRIPTION
+    "NetSDS::Kannel" module provides API to Kannel SMS gateway.
+
+    To decrease innecessary problems we use a lot of predefined parameters
+    while sending and receiving messages via Kannel HTTP API. It's not so
+    flexible as direct HTTP processing but less expensive in development
+    time ;-)
+
+    This modules uses LWP to send messages and CGI.pm to process messages
+    from Kannel.
+
+CLASS METHODS
+    new([...]) - constructor
+        Constructor creates Kannel API handler and set configuration for it.
+
+        Parameters:
+
+        * sendsms_url
+
+        * sendsms_user
+
+        * sendsms_passwd
+
+        * dlr_url
+
+        * default_smsc
+
+        * default_timeout
+
+OBJECT METHODS
+    send(%parameters) - send message to Kannel
+        This method allows to send SMS message via Kannel SMS gateway.
+
+        Parameters (mostly the same as in Kannel sendsms API):
+
+        * message - NetSDS::Message::SMS object
+
+        * from - source address (overrides message)
+
+        * to - destination address (overrides message)
+
+        * text - message text (URI escaped)
+
+        * charset - charset of text
+
+        * coding - 0 for GSM 03.38, 1 for binary, 2 for UCS2
+
+        * smsc - target SMSC (overrides default one)
+
+                $kannel->send_sms(
+                        from => '1234',
+                        to => '380672206770',
+                        text => 'Wake up!!!',
+                        smsc => 'nokia_modem',
+                );
+
+    receive($cgi) - receive MO or DLR from CGI object
+         This method provides import message structure from CGI request .
+
+                my $cgi = CGI::Fast->new();
+                my %ret = $kannel->receive($cgi);
+
+    receive_mo($cgi) - import MO message from CGI object
+          This method provides import message structure from CGI request .
+
+    receive_dlr($cgi) - import message from CGI object
+          This method provides import message structure from CGI request .
+
+    make_dlr_url(%params) - prepare DLR URL
+        Paramters: hash (dlr_url, msgid)
+
+        Returns: URI escaped DLR URL
+
+    make_meta(%params) - prepare SMPP optional TLV
+        Paramters: hash of TLV pairs
+
+        Returns: URI escaped string
+
+                my $meta = $this->make_meta(
+                        charging_id => '0',
+                );
+
+        This will return: %3Fsmpp%3Fcharging_id%3D0
+
+EXAMPLES
+    See Nibelite kannel API
+
+BUGS
+    Unknown yet
+
+SEE ALSO
+    None
+
+TODO
+    None
+
+AUTHOR
+    Michael Bochkaryov <misha@rattler.kiev.ua>
+

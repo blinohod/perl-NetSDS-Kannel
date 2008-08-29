@@ -20,15 +20,15 @@ use strict;
 use warnings 'all';
 
 # force commit
-our $VERSION = "0.1";
+our $VERSION = "0.9";
 
 use Module::Build;
 
 my $build = Module::Build->new(
-	module_name        => 'Nibelite',
-	dist_name          => 'Nibelite',
+	module_name        => 'NetSDS::Kannel',
+	dist_name          => 'NetSDS-Kannel',
 	dist_version       => $VERSION,
-	dist_abstract      => 'Nibelite VAS platform integration components',
+	dist_abstract      => 'Kannel API for NetSDS VAS platform',
 	create_makefile_pl => 'traditional',
 	dist_author        => 'Net.Style Development Team <info@netstyle.com.ua>',
 	create_readme      => 1,
