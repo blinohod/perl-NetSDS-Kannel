@@ -56,7 +56,7 @@ use strict;
 use warnings;
 
 use NetSDS::Util::Text qw(text_recode);
-use NetSDS::Util::Misc qw(str2uri uri2str);
+use NetSDS::Util::Misc qw(str2uri uri2str is_int is_date);
 use NetSDS::Messaging::Const;
 use NetSDS::Message::SMS;
 use LWP::UserAgent;
