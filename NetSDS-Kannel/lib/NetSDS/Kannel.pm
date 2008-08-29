@@ -314,9 +314,14 @@ sub send {
 		$send{smsc} = $params{smsc};
 	}
 
-	# Set SMSC id
+	# Set DLR fetching mask (see kannel documentation)
 	if ( $params{dlr_mask} ) {
 		$send{'dlr-mask'} = $params{dlr_mask};
+	}
+
+	# Set DLR fetching mask (see kannel documentation)
+	if ( $params{dlr_id} ) {
+		$send{'dlr-url'} = $this->make_dlr_url(msgid => $params{dlr_id});
 	}
 
 	# Set meta data
