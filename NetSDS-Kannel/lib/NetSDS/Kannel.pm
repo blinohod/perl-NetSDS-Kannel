@@ -55,7 +55,7 @@ use 5.8.0;
 use strict;
 use warnings;
 
-use NetSDS::Util::Text qw(text_recode);
+use NetSDS::Util::Text qw(text_recode text_encode text_decode);
 use NetSDS::Util::Misc qw(str2uri uri2str is_int is_date);
 use NetSDS::Messaging::Const;
 use NetSDS::Message::SMS;
@@ -120,21 +120,28 @@ use constant ESME_CHARGING    => 1059;
 
 =item B<new([...])> - constructor
 
-Constructor creates Kannel API handler and set configuration for it.
+Constructor creates Kannel API handler and set it's configuration.
+Most of these parameters may be overriden while object method calls.
 
-Parameters:
+B<Admin API parameters:>
 
-* sendsms_url
+* admin_url - Kannel admin API URL
 
-* sendsms_user
+* admin_passwd - password to admin API
 
-* sendsms_passwd
+B<Sending SMS API parameters:>
 
-* dlr_url
+* sendsms_url - URL of Kannel sendsms HTTP API
 
-* default_smsc
+* sendsms_user - user name for sending SMS
 
-* default_timeout
+* sendsms_passwd - password for sending SMS
+
+* dlr_url - base URL for DLR retrieving
+
+* default_smsc - default SMSC identifier for sending SMS
+
+* default_timeout - default sending TCP timeout
 
 =back
 
@@ -147,7 +154,6 @@ sub new {
 
 	my $this = $class->SUPER::new(
 		admin_url       => 'http://127.0.0.1:1300/',
-		admin_user      => 'admin',
 		admin_passwd    => '',
 		sendsms_url     => 'http://127.0.0.1:13013/cgi-bin/sendsms',
 		sendsms_user    => 'netsds',
@@ -160,10 +166,9 @@ sub new {
 
 	return $this;
 
-} ## end sub new
+}
 
 __PACKAGE__->mk_accessors('admin_url');
-__PACKAGE__->mk_accessors('admin_user');
 __PACKAGE__->mk_accessors('admin_passwd');
 __PACKAGE__->mk_accessors('sendsms_url');
 __PACKAGE__->mk_accessors('sendsms_user');
@@ -178,7 +183,7 @@ __PACKAGE__->mk_accessors('default_timeout');
 
 =over
 
-=item send(%parameters) - send message to Kannel
+=item B<send(%parameters)> - send MT SM message to Kannel
 
 This method allows to send SMS message via Kannel SMS gateway.
 
@@ -197,6 +202,8 @@ Parameters (mostly the same as in Kannel sendsms API):
 * coding - 0 for GSM 03.38, 1 for binary, 2 for UCS2
 
 * smsc - target SMSC (overrides default one)
+
+Example:
 
 	$kannel->send_sms(
 		from => '1234',
@@ -321,7 +328,7 @@ sub send {
 
 	# Set DLR fetching mask (see kannel documentation)
 	if ( $params{dlr_id} ) {
-		$send{'dlr-url'} = $this->make_dlr_url(msgid => $params{dlr_id});
+		$send{'dlr-url'} = $this->make_dlr_url( msgid => $params{dlr_id} );
 	}
 
 	# Set meta data
@@ -360,10 +367,14 @@ sub send {
 
 =item B<receive($cgi)> - receive MO or DLR from CGI object
 
- This method provides import message structure from CGI request .
+This method provides import message structure from CGI request .
+This method is just wrapper around C<receive_mo()> and C<receive_dlr()> methods.
+
+Message type (MO or DLR) recognized by C<type> CGI parameter that may be C<mo> or C<dlr>.
 
 	my $cgi = CGI::Fast->new();
 	my %ret = $kannel->receive($cgi);
+
 
 =cut
 
@@ -395,7 +406,33 @@ sub receive {
 
 =item B<receive_mo($cgi)> - import MO message from CGI object
 
-  This method provides import message structure from CGI request .
+This method provides import message structure from CGI request .
+
+Imported MO message parameters returned as hash with the following keys:
+
+* smsc - Kannel's SMSC Id
+
+* smsid - SMSC message ID
+
+* from - subscriber's MSISDN
+
+* to - service address (short code)
+
+* time - SMS receive time
+
+* unixtime SMS receive time as UNIX timestamp
+
+* text - MO SM text
+
+* bin - MO SM as binary string
+
+* udh - SMS UDH (User Data Headers)
+
+* coding - SMS encoding (0 - 7 bit GSM 03.38; 2 - UCS2-BE)
+
+* charset - charset of MO SM text while receiving from Kannel
+
+* binfo - SMPP C<service_type> parameter for billing puroses
 
 =cut
 
@@ -459,8 +496,8 @@ sub receive_mo {
 	}
 
 	# Set coding (coding=%c)
-	if ( $cgi->param('coding') ) {
-		$ret{coding} = $cgi->param('coding');
+	if ( defined $cgi->param('coding') ) {
+		$ret{coding} = $cgi->param('coding') + 0;
 	}
 
 	# Set charset (charset=%C)
@@ -474,9 +511,10 @@ sub receive_mo {
 	}
 
 	# Convert message text to UTF-8
-	if ( $ret{coding} ne COD_8BIT ) {
+	if ( COD_8BIT != $ret{coding} ) {
 		# It's text message
 		$ret{text} = text_recode( $ret{text}, $ret{charset} );
+		$ret{text} = text_encode( $ret{text} );
 	}
 
 	# Process optional SMPP TLV (meta=%D)
@@ -499,8 +537,35 @@ sub receive_mo {
 
 =item B<receive_dlr($cgi)> - import message from CGI object
 
-  This method provides import message structure from CGI request .
+This method provides import message structure from CGI request .
 
+C<receive_dlr> method returns hash with the following keys:
+
+* smsc - kannel SMSC id
+
+* msgid - original MT SM message id for DLR identification
+
+* smsid - SMSC message ID
+
+* from - subscriber's MSISDN (phone number)
+
+* to - service address (short code)
+
+* time - delivery time
+
+* unixtime - delivery time as UNIX timestamp
+
+* dlr - DLR state
+
+* dlrmsg - DLR message from SMSC
+
+Example:
+
+	my $cgi = CGI->new();
+
+	my %dlr = $kannel->receive_dlr($cgi);
+
+	print "DLR received for MSISDN: " . $dlr{from};
 
 =cut
 
@@ -508,7 +573,7 @@ sub receive_mo {
 
 sub receive_dlr {
 
-	my ($this, $cgi ) = @_;
+	my ( $this, $cgi ) = @_;
 
 	my %ret = (
 		type => 'dlr',
@@ -521,7 +586,7 @@ sub receive_dlr {
 		$ret{smsc} = undef;
 	}
 
-	# Set SMSC message Id (msgid=our_id)
+	# Set VASP message Id (msgid=our_id)
 	if ( $cgi->param('msgid') ) {
 		$ret{msgid} = $cgi->param('msgid');
 	} else {
@@ -574,6 +639,8 @@ sub receive_dlr {
 
 =item B<make_dlr_url(%params)> - prepare DLR URL
 
+This method creates URI escaped string with URL template for DLR notification.
+
 Paramters: hash (dlr_url, msgid)
 
 Returns: URI escaped DLR URL
@@ -586,9 +653,14 @@ sub make_dlr_url {
 
 	my ( $this, %params ) = @_;
 
+	# Set reference to MT message Id for identification
 	my $msgid = $params{msgid};
 
-	my $dlr_url = $this->{dlr_url} . "?msgid=$msgid&smsid=%I&from=%p&to=%P&time=%t&unixtime=%T&dlr=%d&dlrmsg=%A";
+	# Set DLR base URL from object property or method parameter
+	my $dlr_url = $this->{dlr_url};
+	if ( $params{dlr_url} ) { $dlr_url = $params{dlr_url}; }
+
+	$dlr_url .= "?type=dlr&msgid=$msgid&smsid=%I&from=%p&to=%P&time=%t&unixtime=%T&dlr=%d&dlrmsg=%A";
 
 	return str2uri($dlr_url);
 
@@ -598,9 +670,18 @@ sub make_dlr_url {
 
 =item B<make_meta(%params)> - prepare SMPP optional TLV
 
+This method creates URI escaped string with optional SMPP tag-lenght-value (TLV)
+parameters to send them in C<meta-data> CGI paramter of Kannel's C<sendsms> HTTP API.
+
+Format of C<meta-data> parameter value:
+
+	?smpp?tag1=value1&tag2=value2&...tagN=valueN
+
 Paramters: hash of TLV pairs
 
 Returns: URI escaped string
+
+Example:
 
 	my $meta = $this->make_meta(
 		charging_id => '0',
@@ -641,7 +722,7 @@ Unknown yet
 
 =head1 SEE ALSO
 
-None
+Kannel User Guide at http://www.kannel.org/download/1.4.1/userguide-1.4.1/userguide.html
 
 =head1 TODO
 

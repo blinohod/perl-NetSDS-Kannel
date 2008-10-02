@@ -2,7 +2,7 @@
 
 Name: perl-%module
 Version: 0.9
-Release: alt1
+Release: alt3
 
 Summary: NetSDS Kannel API
 Group: Development/Perl
@@ -34,6 +34,9 @@ None.
 %perl_vendor_man3dir/*
 
 %changelog
+* Mon Sep 29 2008 Michael Bochkaryov <misha@altlinux.ru> 0.9-alt3
+- docs update
+
 * Thu Aug 28 2008 Grigory Milev <week@altlinux.ru> 0.1-alt2
 - add noarch arch :)
 
