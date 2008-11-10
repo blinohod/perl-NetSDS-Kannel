@@ -296,6 +296,11 @@ sub send {
 		$send{charset} = $params{charset};
 	}
 
+	# Set message mclass
+	if ( defined $params{mclass} ) {
+		$send{mclass} = $params{mclass};
+	}
+
 	# Set data coding
 	if ( $params{coding} ) {
 		$send{coding} = $params{coding};
@@ -503,6 +508,11 @@ sub receive_mo {
 	# Set charset (charset=%C)
 	if ( $cgi->param('charset') ) {
 		$ret{charset} = $cgi->param('charset');
+	}
+
+	# Set message class (mclass=%m)
+	if ( $cgi->param('mclass') ) {
+		$ret{mclass} = $cgi->param('mclass');
 	}
 
 	# Set billing information (binfo=%B)
