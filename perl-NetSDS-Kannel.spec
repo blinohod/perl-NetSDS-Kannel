@@ -14,7 +14,7 @@ Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
 BuildPreReq: perl-Log-Agent perl-Module-Build perl-NetSDS-Messaging perl-Test-Pod perl-Test-Pod-Coverage
-# Automatically added by buildreq on Fri Aug 29 2008 (-bi)
+# Automatically added by buildreq on Mon Nov 10 2008 (-bi)
 BuildRequires: perl-Log-Agent perl-Module-Build perl-NetSDS-Messaging perl-Test-Pod perl-Test-Pod-Coverage
 
 %description
