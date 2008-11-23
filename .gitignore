@@ -1,0 +1,14 @@
+*/Build
+*/MANIFEST
+*/MANIFEST.*
+*/META.yml
+*/README
+*~
+*/_build
+*/Makefile
+*/Makefile.PL
+*/ZZZ
+*/blib
+*/pm_to_blib
+*.swp
+*.bak
