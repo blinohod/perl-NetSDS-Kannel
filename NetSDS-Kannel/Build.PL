@@ -1,7 +1,4 @@
 #!/usr/bin/env perl
-########################################################################
-# $Id: Build.PL 27 2008-07-21 23:23:15Z anvil $
-########################################################################
 
 =head1 NAME
 
@@ -20,7 +17,7 @@ use strict;
 use warnings 'all';
 
 # force commit
-our $VERSION = "0.9";
+our $VERSION = "1.1";
 
 use Module::Build;
 
@@ -45,8 +42,7 @@ my $build = Module::Build->new(
 		'NetSDS::App'             => '0.01',
 		'NetSDS::Class::Abstract' => '0.01',
 	},
-	recommends => {
-	},
+	recommends   => {},
 	script_files => {},
 );
 
