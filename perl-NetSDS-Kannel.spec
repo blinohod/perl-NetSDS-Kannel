@@ -14,9 +14,10 @@ Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
 # Automatically added by buildreq on Mon Nov 10 2008 (-bi)
+BuildRequires: perl-Log-Agent perl-Module-Build perl-NetSDS-Messaging perl-Test-Pod perl-Test-Pod-Coverage
 
 %description
-None.
+NetSDS::Kannel provides simple perl API to Kannel SMSC gateway.
 
 %prep
 %setup -q -n %module-%version
@@ -30,8 +31,14 @@ None.
 %files
 %perl_vendor_privlib/NetSDS*
 %perl_vendor_man3dir/*
+%doc samples
 
 %changelog
+* Sun Nov 23 2008 Michael Bochkaryov <misha@altlinux.ru> 1.1-alt1
+- 1.1 version
+- samples packaged
+- basic test cases added
+
 * Mon Sep 29 2008 Michael Bochkaryov <misha@altlinux.ru> 0.9-alt3
 - docs update
 

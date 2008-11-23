@@ -17,7 +17,7 @@ my $m = NetSDS::Message::SMS->new(
 	to   => '380672206770@smsc.nokia',
 );
 
-my $res = $k->send_sms(
+my $res = $k->send(
 	message => $m,
 	from => '12345',
 #	to   => '+380672206770',
