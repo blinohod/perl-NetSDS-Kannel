@@ -39,7 +39,6 @@ my $build = Module::Build->new(
 	requires => {
 		'version'                 => '0.50',
 		'perl'                    => '5.008',
-		'NetSDS::App'             => '0.01',
 		'NetSDS::Class::Abstract' => '0.01',
 	},
 	recommends   => {},

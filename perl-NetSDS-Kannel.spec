@@ -1,8 +1,8 @@
 %define module NetSDS-Kannel
 
 Name: perl-%module
-Version: 0.9
-Release: alt3
+Version: 1.1
+Release: alt1
 
 Summary: NetSDS Kannel API
 Group: Development/Perl
@@ -13,9 +13,7 @@ BuildArch: noarch
 Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
-BuildPreReq: perl-Log-Agent perl-Module-Build perl-NetSDS-Messaging perl-Test-Pod perl-Test-Pod-Coverage
 # Automatically added by buildreq on Mon Nov 10 2008 (-bi)
-BuildRequires: perl-Log-Agent perl-Module-Build perl-NetSDS-Messaging perl-Test-Pod perl-Test-Pod-Coverage
 
 %description
 None.
