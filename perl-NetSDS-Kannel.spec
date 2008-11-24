@@ -13,7 +13,7 @@ BuildArch: noarch
 Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
-# Automatically added by buildreq on Mon Nov 10 2008 (-bi)
+# Automatically added by buildreq on Sun Nov 23 2008 (-bi)
 BuildRequires: perl-Log-Agent perl-Module-Build perl-NetSDS-Messaging perl-Test-Pod perl-Test-Pod-Coverage
 
 %description
