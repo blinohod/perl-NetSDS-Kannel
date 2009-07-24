@@ -1,7 +1,11 @@
 Build.PL
+lib/NetSDS/Feature/Kannel.pm
 lib/NetSDS/Kannel.pm
-MANIFEST			This list of files
-samples/test_send.pl
 Makefile.PL
-README
+MANIFEST			This list of files
 META.yml
+README
+samples/test_send.pl
+t/01_load.t
+t/02_pod.t
+t/03_pod_coverage.t

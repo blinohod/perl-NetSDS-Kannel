@@ -35,29 +35,34 @@ DESCRIPTION
 
 CLASS METHODS
     new([...]) - constructor
-        Constructor creates Kannel API handler and set configuration for it.
+        Constructor creates Kannel API handler and set it's configuration.
+        Most of these parameters may be overriden while object method calls.
 
-        Parameters:
+        Admin API parameters:
 
-        * sendsms_url
+        * admin_url - Kannel admin API URL
 
-        * sendsms_user
+        * admin_passwd - password to admin API
 
-        * sendsms_passwd
+        Sending SMS API parameters:
 
-        * dlr_url
+        * sendsms_url - URL of Kannel sendsms HTTP API
 
-        * default_smsc
+        * sendsms_user - user name for sending SMS
 
-        * default_timeout
+        * sendsms_passwd - password for sending SMS
+
+        * dlr_url - base URL for DLR retrieving
+
+        * default_smsc - default SMSC identifier for sending SMS
+
+        * default_timeout - default sending TCP timeout
 
 OBJECT METHODS
-    send(%parameters) - send message to Kannel
+    send(%parameters) - send MT SM message to Kannel
         This method allows to send SMS message via Kannel SMS gateway.
 
         Parameters (mostly the same as in Kannel sendsms API):
-
-        * message - NetSDS::Message::SMS object
 
         * from - source address (overrides message)
 
@@ -71,6 +76,8 @@ OBJECT METHODS
 
         * smsc - target SMSC (overrides default one)
 
+        Example:
+
                 $kannel->send_sms(
                         from => '1234',
                         to => '380672206770',
@@ -79,26 +86,99 @@ OBJECT METHODS
                 );
 
     receive($cgi) - receive MO or DLR from CGI object
-         This method provides import message structure from CGI request .
+        This method provides import message structure from CGI request .
+        This method is just wrapper around "receive_mo()" and
+        "receive_dlr()" methods.
+
+        Message type (MO or DLR) recognized by "type" CGI parameter that may
+        be "mo" or "dlr".
 
                 my $cgi = CGI::Fast->new();
                 my %ret = $kannel->receive($cgi);
 
     receive_mo($cgi) - import MO message from CGI object
-          This method provides import message structure from CGI request .
+        This method provides import message structure from CGI request .
+
+        Imported MO message parameters returned as hash with the following
+        keys:
+
+        * smsc - Kannel's SMSC Id
+
+        * smsid - SMSC message ID
+
+        * from - subscriber's MSISDN
+
+        * to - service address (short code)
+
+        * time - SMS receive time
+
+        * unixtime SMS receive time as UNIX timestamp
+
+        * text - MO SM text
+
+        * bin - MO SM as binary string
+
+        * udh - SMS UDH (User Data Headers)
+
+        * coding - SMS encoding (0 - 7 bit GSM 03.38; 2 - UCS2-BE)
+
+        * charset - charset of MO SM text while receiving from Kannel
+
+        * binfo - SMPP "service_type" parameter for billing puroses
 
     receive_dlr($cgi) - import message from CGI object
-          This method provides import message structure from CGI request .
+        This method provides import message structure from CGI request .
+
+        "receive_dlr" method returns hash with the following keys:
+
+        * smsc - kannel SMSC id
+
+        * msgid - original MT SM message id for DLR identification
+
+        * smsid - SMSC message ID
+
+        * from - subscriber's MSISDN (phone number)
+
+        * to - service address (short code)
+
+        * time - delivery time
+
+        * unixtime - delivery time as UNIX timestamp
+
+        * dlr - DLR state
+
+        * dlrmsg - DLR message from SMSC
+
+        Example:
+
+                my $cgi = CGI->new();
+
+                my %dlr = $kannel->receive_dlr($cgi);
+
+                print "DLR received for MSISDN: " . $dlr{from};
 
     make_dlr_url(%params) - prepare DLR URL
+        This method creates URI escaped string with URL template for DLR
+        notification.
+
         Paramters: hash (dlr_url, msgid)
 
         Returns: URI escaped DLR URL
 
     make_meta(%params) - prepare SMPP optional TLV
+        This method creates URI escaped string with optional SMPP
+        tag-lenght-value (TLV) parameters to send them in "meta-data" CGI
+        paramter of Kannel's "sendsms" HTTP API.
+
+        Format of "meta-data" parameter value:
+
+                ?smpp?tag1=value1&tag2=value2&...tagN=valueN
+
         Paramters: hash of TLV pairs
 
         Returns: URI escaped string
+
+        Example:
 
                 my $meta = $this->make_meta(
                         charging_id => '0',
@@ -113,7 +193,8 @@ BUGS
     Unknown yet
 
 SEE ALSO
-    None
+    Kannel User Guide at
+    http://www.kannel.org/download/1.4.1/userguide-1.4.1/userguide.html
 
 TODO
     None
