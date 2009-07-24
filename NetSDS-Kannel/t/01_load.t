@@ -14,7 +14,7 @@
 use strict;
 use warnings;
 
-use Test::More qw(no_plan);                      # last test to print
+use Test::More tests => 2;                      # last test to print
 
 BEGIN {
 	use_ok('NetSDS::Kannel');
