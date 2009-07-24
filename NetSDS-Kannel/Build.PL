@@ -16,15 +16,11 @@ Build.PL - Build script generator for NetSDS Nibelite integration
 use strict;
 use warnings 'all';
 
-# force commit
-our $VERSION = "1.1";
-
 use Module::Build;
 
 my $build = Module::Build->new(
 	module_name        => 'NetSDS::Kannel',
 	dist_name          => 'NetSDS-Kannel',
-	dist_version       => $VERSION,
 	dist_abstract      => 'Kannel API for NetSDS VAS platform',
 	create_makefile_pl => 'traditional',
 	dist_author        => 'Net.Style Development Team <info@netstyle.com.ua>',
@@ -39,7 +35,12 @@ my $build = Module::Build->new(
 	requires => {
 		'version'                 => '0.50',
 		'perl'                    => '5.008',
-		'NetSDS::Class::Abstract' => '0.01',
+		'NetSDS::Class::Abstract' => '1.000',
+		'NetSDS::Util::Convert'   => '1.000',
+		'NetSDS::Util::String'    => '1.000',
+		'LWP::UserAgent'          => '0',
+		'URI::Escape'             => '0',
+
 	},
 	recommends   => {},
 	script_files => {},
