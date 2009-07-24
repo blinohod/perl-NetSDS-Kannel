@@ -55,10 +55,8 @@ use 5.8.0;
 use strict;
 use warnings;
 
-use NetSDS::Util::Text qw(text_recode text_encode text_decode);
-use NetSDS::Util::Misc qw(str2uri uri2str is_int is_date);
-use NetSDS::Messaging::Const;
-use NetSDS::Message::SMS;
+use NetSDS::Util::Convert;
+use NetSDS::Util::String;
 use LWP::UserAgent;
 use URI::Escape;
 
@@ -189,8 +187,6 @@ This method allows to send SMS message via Kannel SMS gateway.
 
 Parameters (mostly the same as in Kannel sendsms API):
 
-* message - NetSDS::Message::SMS object
-
 * from - source address (overrides message)
 
 * to - destination address (overrides message)
@@ -224,34 +220,11 @@ sub send {
 		'username' => $this->sendsms_user,
 		'password' => $this->sendsms_passwd,
 		'charset'  => 'UTF-8',                 # Local text representation
-		'coding'   => COD_7BIT,                # 7 bit GSM 03.38
+		'coding'   => 0,                       # 7 bit GSM 03.38
 		'priority' => 1,                       # Interactive in accordance with SMPP 3.4
 		'validity' => 360,                     # 6 hours
 		'dlr-mask' => 19,
 	);
-
-	# First try to parse SMS message
-	if ( $params{message} and ( ref $params{message} eq 'NetSDS::Message::SMS' ) ) {
-
-		my $msg = $params{message};
-
-		if ( $msg->from ) {
-			$send{from} = uri_escape( $msg->from_native );
-		}
-
-		if ( $msg->to ) {
-			$send{to} = uri_escape( '+' . $msg->to_native );
-		}
-
-		if ( $msg->udh ) {
-			$send{udh} = uri_escape( $msg->udh );
-		}
-
-		if ( $msg->ud ) {
-			$send{text} = uri_escape( $msg->ud );
-		}
-
-	} ## end if ( $params{message} ...
 
 	# Then we override message parameters
 
@@ -521,10 +494,10 @@ sub receive_mo {
 	}
 
 	# Convert message text to UTF-8
-	if ( COD_8BIT != $ret{coding} ) {
+	if ( 1 != $ret{coding} ) {
 		# It's text message
-		$ret{text} = text_recode( $ret{text}, $ret{charset} );
-		$ret{text} = text_encode( $ret{text} );
+		$ret{text} = str_recode( $ret{text}, $ret{charset} );
+		$ret{text} = str_encode( $ret{text} );
 	}
 
 	# Process optional SMPP TLV (meta=%D)
@@ -672,7 +645,7 @@ sub make_dlr_url {
 
 	$dlr_url .= "?type=dlr&msgid=$msgid&smsid=%I&from=%p&to=%P&time=%t&unixtime=%T&dlr=%d&dlrmsg=%A";
 
-	return str2uri($dlr_url);
+	return conv_str_uri($dlr_url);
 
 }
 
@@ -712,7 +685,7 @@ sub make_meta {
 	my @pairs = map $_ . '=' . $params{$_}, keys %params;
 	$meta_str .= join '&', @pairs;
 
-	return str2uri($meta_str);
+	return conv_str_uri($meta_str);
 
 }
 
