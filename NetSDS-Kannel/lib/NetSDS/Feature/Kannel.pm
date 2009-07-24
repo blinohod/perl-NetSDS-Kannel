@@ -20,7 +20,8 @@ NetSDS::Feature::Kannel - kannel application feature
 
 =head1 DESCRIPTION
 
-C<NetSDS> module contains superclass all other classes should be inherited from.
+C<NetSDS::Feature::Kannel> module provides pluggable API to Kannel
+from NetSDS application.
 
 =cut
 
@@ -33,7 +34,7 @@ use warnings;
 use NetSDS::Kannel;
 use base qw(NetSDS::Class::Abstract);
 
-use version; our $VERSION = "1.0";
+use version; our $VERSION = "1.100";
 
 #===============================================================================
 #
@@ -71,6 +72,7 @@ __END__
 
 =head1 EXAMPLES
 
+None
 
 =head1 BUGS
 
