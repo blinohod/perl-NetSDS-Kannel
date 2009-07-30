@@ -14,10 +14,11 @@
 use strict;
 use warnings;
 
-use Test::More tests => 2;                      # last test to print
+use Test::More tests => 3;                      # last test to print
 
 BEGIN {
 	use_ok('NetSDS::Kannel');
+	use_ok('NetSDS::Kannel::Admin');
 	use_ok('NetSDS::Feature::Kannel');
 }
 
