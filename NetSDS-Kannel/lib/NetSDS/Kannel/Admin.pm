@@ -26,6 +26,23 @@ sub _get_action {
 	return $subst{ +shift };
 }
 
+
+#***********************************************************************
+
+=over
+
+=item B<request()> - ????????
+
+Paramters:
+
+Returns:
+
+This method provides..... 
+
+=cut 
+
+#-----------------------------------------------------------------------
+
 sub request {
 	my ( $self, $url ) = @_;
 
@@ -50,6 +67,21 @@ sub request {
 	return $self->_show_res($res);
 } ## end sub request
 
+
+#***********************************************************************
+
+=item B<do_action()> - ????????
+
+Paramters:
+
+Returns:
+
+This method provides..... 
+
+=cut 
+
+#-----------------------------------------------------------------------
+
 sub do_action {
 	my ( $self, $url, $action, $pass, $name, $level ) = @_;
 	my $act = _get_action($action);
@@ -57,6 +89,20 @@ sub do_action {
 	return "ERROR: Can't recognise action $action!" unless $act;
 	return $self->$act( "$url/$action", $pass, $name, $level );
 }
+
+#***********************************************************************
+
+=item B<action()> - ????????
+
+Paramters:
+
+Returns:
+
+This method provides..... 
+
+=cut 
+
+#-----------------------------------------------------------------------
 
 sub action {
 	my ( $self, $url, $pass, $name, $level ) = @_;
@@ -85,5 +131,11 @@ sub _show_res {
 
 	return;
 }
+
+=back
+
+=head1 BUGS
+
+=cut
 
 1;
