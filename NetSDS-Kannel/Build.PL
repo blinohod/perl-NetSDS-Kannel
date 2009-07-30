@@ -40,10 +40,12 @@ my $build = Module::Build->new(
 		'NetSDS::Util::String'    => '1.000',
 		'LWP::UserAgent'          => '0',
 		'URI::Escape'             => '0',
-
+		'XML::LibXML'             => '1.60',
 	},
 	recommends   => {},
-	script_files => {},
+	script_files => [
+		'scripts/kannel-admin',
+	],
 );
 
 $build->create_build_script;
