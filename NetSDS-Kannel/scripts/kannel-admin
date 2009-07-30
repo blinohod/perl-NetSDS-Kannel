@@ -1,0 +1,131 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings FATAL => qw/all/;
+
+use Pod::Usage;
+use Getopt::Long;
+use FindBin qw/$Bin/;
+
+use lib "$Bin/../lib";
+use NetSDS::Kannel::Admin;
+
+sub validate($$$);
+
+my %actions = (
+	'status'       => 0,
+	'stop-smsc'    => 2,
+	'start-smsc'   => 2,
+	'restart'      => 1,
+	'suspend'      => 1,
+	'isolate'      => 1,
+	'resume'       => 1,
+	'flush-dlr'    => 1,
+	'shutdown'     => 1,
+	'reload-lists' => 1,
+	'log-level'    => 1
+);
+
+my ( $cmd, $url, $pass, $name, $level ) = ( '', 'http://127.0.0.1:13000', '', '', undef );
+GetOptions(
+	"cmd=s"   => \$cmd,
+	"url=s"   => \$url,
+	"pass=s"  => \$pass,
+	"name=s"  => \$name,
+	"level=i" => \$level,
+	"h|help"  => sub { pod2usage(1) },
+  )
+  or pod2usage(2);
+
+pod2usage(1) and exit(0) unless validate( $cmd, $pass, $name );
+
+if ( $cmd eq 'log-level' ) {
+	unless ( defined $level and $level <= 5 and $level >= 0 ) {
+		pod2usage(1);
+		exit(0);
+	}
+} else {
+	$level = '';
+}
+
+my $admin   = NetSDS::Kannel::Admin->new;
+my $err_str = $admin->do_action( $url, $cmd, $pass, $name, $level );
+
+print $err_str, "\n" if $err_str;
+
+sub validate ($$$) {
+	my @array = @_;
+	return unless defined $actions{ $array[0] };
+
+	my $res = grep { $_ } @array[ 0 .. $actions{ $array[0] } ];
+	return ( $res - 1 ) == $actions{ $array[0] };
+}
+
+__END__
+
+=head1 NAME
+
+- A do nothing, show a statistic of kannel.
+
+=head1 SYNOPSIS
+
+admin [options]
+
+admin --help will list options.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--help>
+
+Print a brief help message and exits.
+
+=item B<--cmd string>
+
+A type of statictic that should be showe. 
+
+Status     - Get the current status of the gateway. Don't need any params (like pass or name).
+
+Stop-smsc  - Shutdown a single SMSC link. Password and smscenter name required.
+
+Start-smsc - Re-start a single SMSC link. Password and smscenter name required.
+
+Restart    - Re-start whole bearerbox. Password required.
+
+Suspend    - Set Kannel state as 'suspended'. Password required.
+
+Isolate    - Set Kannel state as 'isolated'. Password required.
+
+Resume     - Set Kannel state as 'running' if it is suspended or isolated. Password required.
+
+Flush-dlr  - Flush all queued DLR messages in the current storage space. Password required.
+
+Shutdown   - Bring down the gateway, by setting state to 'shutdown'. Password required.
+
+Log-level  - Set Kannel log-level of log-files while running. Password required.
+
+=item B<--url string>
+
+A page from what a statistic shoul be taken. By default - http://127.0.0.1:13000
+
+=item B<--pass string>
+
+A pass
+
+=item B<--name string>
+
+A name of the smsc
+
+=item B<--level integer>
+
+A log level to set in range 0..5
+
+=back
+
+=head1 AUTHOR
+
+=head1 COPYRIGHT
+
+=cut
+
