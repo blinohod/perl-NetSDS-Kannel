@@ -2,7 +2,7 @@
 
 Name: perl-%module
 Version: 1.200
-Release: alt1
+Release: alt2
 
 Summary: NetSDS Kannel API
 Group: Development/Perl
@@ -36,6 +36,9 @@ NetSDS::Kannel provides simple perl API to Kannel SMSC gateway.
 %doc samples
 
 %changelog
+* Mon Aug 31 2009 Michael Bochkaryov <misha@altlinux.ru> 1.200-alt2
+- Fix build requirements
+
 * Thu Jul 30 2009 Michael Bochkaryov <misha@altlinux.ru> 1.200-alt1
 - NetSDS::Kannel::Admin added
 - CLI admin tool added
