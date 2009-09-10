@@ -101,13 +101,13 @@ use constant ESME_RINVMSGLEN  => 1;        # Wrong length
 use constant ESME_RINVCMDID   => 3;        # Wrong SMPP command
 use constant ESME_RINVBNDSTS  => 4;
 use constant ESME_RSYSERR     => 8;
-use constant ESME_RINVDSTADR  => 11;
+use constant ESME_RINVDSTADR  => 11;       # Invalid destination address
 use constant ESME_RMSGQFUL    => 20;
 use constant ESME_RTHROTTLED  => 88;
 use constant ESME_RUNKNOWNERR => 255;
 use constant ESME_RTIMEOUT    => 1057;
-use constant ESME_LICENSE     => 1058;
-use constant ESME_CHARGING    => 1059;
+use constant ESME_LICENSE     => 1058;     # License restriction (vendor specific)
+use constant ESME_CHARGING    => 1059;     # Low billing balance (vendor specific)
 
 #===============================================================================
 #
@@ -191,13 +191,21 @@ Parameters (mostly the same as in Kannel sendsms API):
 
 * to - destination address (overrides message)
 
-* text - message text (URI escaped)
+* text - message text (byte string)
+
+* udh - user data header (byte string)
 
 * charset - charset of text
 
 * coding - 0 for GSM 03.38, 1 for binary, 2 for UCS2
 
 * smsc - target SMSC (overrides default one)
+
+* mclass - message class if necessary (0 for flash sms)
+
+* validity - TTL for MO SM in minutes
+
+* deferred - timeout for delayed delivery
 
 Example:
 
@@ -221,9 +229,6 @@ sub send {
 		'password' => $this->sendsms_passwd,
 		'charset'  => 'UTF-8',                 # Local text representation
 		'coding'   => 0,                       # 7 bit GSM 03.38
-		'priority' => 1,                       # Interactive in accordance with SMPP 3.4
-		'validity' => 360,                     # 6 hours
-		'dlr-mask' => 19,
 	);
 
 	# Then we override message parameters
@@ -300,13 +305,15 @@ sub send {
 	}
 
 	# Set DLR fetching mask (see kannel documentation)
-	if ( $params{dlr_mask} ) {
-		$send{'dlr-mask'} = $params{dlr_mask};
-	}
-
-	# Set DLR fetching mask (see kannel documentation)
 	if ( $params{dlr_id} ) {
 		$send{'dlr-url'} = $this->make_dlr_url( msgid => $params{dlr_id} );
+
+		# Set DLR fetching mask (see kannel documentation)
+		if ( $params{dlr_mask} ) {
+			$send{'dlr-mask'} = $params{dlr_mask};
+		} else {
+			$send{'dlr-mask'} = 3;    # default mask (delivered and undeliverable)
+		}
 	}
 
 	# Set meta data
