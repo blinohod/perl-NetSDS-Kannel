@@ -57,6 +57,7 @@ use warnings;
 
 use NetSDS::Util::Convert;
 use NetSDS::Util::String;
+use NetSDS::Util::Types;
 use LWP::UserAgent;
 use URI::Escape;
 
@@ -108,6 +109,7 @@ use constant ESME_RUNKNOWNERR => 255;
 use constant ESME_RTIMEOUT    => 1057;
 use constant ESME_LICENSE     => 1058;     # License restriction (vendor specific)
 use constant ESME_CHARGING    => 1059;     # Low billing balance (vendor specific)
+use constant ESME_CHARGING_PP => 1111;     # Low billing balance on prepaid (vendor specific)
 
 #===============================================================================
 #
