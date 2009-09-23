@@ -27,8 +27,6 @@ sub _get_action {
 }
 
 
-#***********************************************************************
-
 =over
 
 =item B<request()> - ????????
@@ -41,19 +39,17 @@ This method provides.....
 
 =cut 
 
-#-----------------------------------------------------------------------
-
 sub request {
-	my ( $self, $url ) = @_;
-
+	my ( $self, $url, $nodelist ) = @_;
+	$url = $self->{'url'} ? $self->{'url'} . $url : $url;
+	return unless $url;
+	
 	my ( $parser, $res ) = ( XML::LibXML->new, [] );
 	my $response = LWP::UserAgent->new->get( $url . ".xml" );
 
 	if ( $response->is_success ) {
 		my $doc = $parser->parse_string( $response->decoded_content );
-
 		for my $node ( $doc->getElementsByTagName('smsc') ) {    #TODO move smsc to config
-
 			push @$res,
 			  {
 				map { ( $_->localname => $_->textContent ) }
@@ -64,11 +60,38 @@ sub request {
 		die $response->status_line;
 	}
 
-	return $self->_show_res($res);
+	return $res;
 } ## end sub request
 
+sub get_structure {
+	my ($self, $url) = @_;
+	$url = $self->{'url'} ? $self->{'url'} . $url : $url;
+	return unless $url;
+	
+	my ( $parser, $res ) = ( XML::LibXML->new, [] );
+	my $response = LWP::UserAgent->new->get( $url . ".xml" );
+	
+	if ( $response->is_success ) {
+		my $doc = $parser->parse_string( $response->decoded_content );
+		return recurse($doc->documentElement);
+	};
 
-#***********************************************************************
+	return 0;
+}
+
+sub recurse {
+	my $node = shift;
+	
+	my @nodelist = grep { $_->localname } $node->getChildNodes;
+	return $node->textContent unless @nodelist;
+
+	my $res = [];
+	for my $child (@nodelist) {
+		push @$res, { $child->localname => recurse($child) };
+	};
+
+	return $res;
+};
 
 =item B<do_action()> - ????????
 
@@ -80,8 +103,6 @@ This method provides.....
 
 =cut 
 
-#-----------------------------------------------------------------------
-
 sub do_action {
 	my ( $self, $url, $action, $pass, $name, $level ) = @_;
 	my $act = _get_action($action);
@@ -89,8 +110,6 @@ sub do_action {
 	return "ERROR: Can't recognise action $action!" unless $act;
 	return $self->$act( "$url/$action", $pass, $name, $level );
 }
-
-#***********************************************************************
 
 =item B<action()> - ????????
 
@@ -101,8 +120,6 @@ Returns:
 This method provides..... 
 
 =cut 
-
-#-----------------------------------------------------------------------
 
 sub action {
 	my ( $self, $url, $pass, $name, $level ) = @_;
@@ -119,7 +136,7 @@ sub action {
 	return;
 }
 
-sub _show_res {
+sub show_res {
 	my ( $self, $data ) = @_;
 
 	for ( my $i = 0 ; $data->[$i] ; $i++ ) {

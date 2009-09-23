@@ -49,9 +49,13 @@ if ( $cmd eq 'log-level' ) {
 }
 
 my $admin   = NetSDS::Kannel::Admin->new;
-my $err_str = $admin->do_action( $url, $cmd, $pass, $name, $level );
+my $res = $admin->do_action( $url, $cmd, $pass, $name, $level );
 
-print $err_str, "\n" if $err_str;
+if (ref $res) {
+	$admin->show_res($res);
+} else {
+	print $res, "\n"
+};
 
 sub validate ($$$) {
 	my @array = @_;
