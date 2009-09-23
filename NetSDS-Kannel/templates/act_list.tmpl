@@ -1,0 +1,37 @@
+<TMPL_UNLESS reload>
+	<script src="/NetSDS/js/btnsObject.js" type="text/javascript"></script>
+</TMPL_UNLESS>
+
+<div id=change>
+<div id='itemsbig'>
+<input type='hidden' id='method' name='method' value=''>
+<TMPL_IF error>
+ERROR!!!
+<TMPL_ELSE>
+<table>
+		<TMPL_LOOP smsc>
+				<tr>
+					<td colspan=2><h2>SMSC</h2></td>
+				</tr>
+				<tr>
+					<td colspan=2><TMPL_INCLUDE param2.tmpl></td>
+				</tr>
+				<tr>
+					<td><b>Actions:</b></td>
+					<td>
+						<TMPL_UNLESS dead>
+							<input class='reload-btn' type=button href='?s=kannel&a=do_action&str=stop-smsc&id=<TMPL_VAR NAME=id>&v=html' value='Stop'>
+						<TMPL_ELSE>
+							<input class='reload-btn' type=button href='?s=kannel&a=do_action&str=start-smsc&id=<TMPL_VAR NAME=id>&v=html' value='Start'>
+						</TMPL_UNLESS>
+						<input class='reload-btn' type=button href='?s=kannel&a=do_action&str=restart&id=<TMPL_VAR NAME=id>&v=html'value='Restart'>
+					</td>
+				</tr>
+				<tr>
+					<td colspan=2><hr /></td>
+				</tr>
+		</TMPL_LOOP>
+</table>
+</TMPL_IF>
+</div>
+</div>

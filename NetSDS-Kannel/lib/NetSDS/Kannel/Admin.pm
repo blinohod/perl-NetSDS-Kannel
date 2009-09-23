@@ -40,7 +40,7 @@ This method provides.....
 =cut 
 
 sub request {
-	my ( $self, $url, $nodelist ) = @_;
+	my ( $self, $url ) = @_;
 	$url = $self->{'url'} ? $self->{'url'} . $url : $url;
 	return unless $url;
 	
@@ -106,7 +106,7 @@ This method provides.....
 sub do_action {
 	my ( $self, $url, $action, $pass, $name, $level ) = @_;
 	my $act = _get_action($action);
-
+	
 	return "ERROR: Can't recognise action $action!" unless $act;
 	return $self->$act( "$url/$action", $pass, $name, $level );
 }
@@ -123,17 +123,13 @@ This method provides.....
 
 sub action {
 	my ( $self, $url, $pass, $name, $level ) = @_;
-
+	$url = $self->{'url'} ? "$self->{'url'}$url" : $url;
+	
 	my $append   = "?smsc=$name&password=$pass&level=$level";
 	my $response = LWP::UserAgent->new->get( $url . $append );
 
-	if ( $response->is_success ) {
-		print $response->decoded_content, "\n";
-	} else {
-		die $response->status_line;
-	}
-
-	return;
+	return $response->is_success ?
+		$response->decoded_content : $response->status_line;
 }
 
 sub show_res {

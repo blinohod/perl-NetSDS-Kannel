@@ -54,7 +54,7 @@ my $res = $admin->do_action( $url, $cmd, $pass, $name, $level );
 if (ref $res) {
 	$admin->show_res($res);
 } else {
-	print $res, "\n"
+	print $res, "\n";
 };
 
 sub validate ($$$) {
