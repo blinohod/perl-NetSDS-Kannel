@@ -14,6 +14,9 @@ use lib qw( /home/yana/NetSDS/NetSDS-ContactDB/lib
 	/home/yana/kannel/perl-NetSDS-Kannel/NetSDS-Kannel/lib);
 
 use NetSDS::Kannel::Admin;
+use NetSDS::Kannel;
+use NetSDS::Message::SMS;
+
 use Data::Dumper;
 
 use base 'NetSDS::App::GUI';
@@ -23,6 +26,10 @@ sub start {
 	
 	$self->{'kannel'} = NetSDS::Kannel::Admin->new(
 		url => $self->conf->{'url'}
+	);
+
+	$self->{'sender'} = NetSDS::Kannel->new( 
+		%{ $self->conf->{'send'} } 
 	);
 
 	return $self;
@@ -66,7 +73,8 @@ sub act_list {
 			dead => $dead, id => $id };
 	};
 
-	return { %$params, reload => $self->call_param('reload') || 0 };
+	return { %$params, reload => $self->call_param('reload') || 0,
+		autoref => $self->call_param('autoref') || 0 };
 };
 
 sub act_do_action {
@@ -83,6 +91,28 @@ sub act_do_action {
 	return { res => $self->{'kannel'}->action($action, 
 			$self->conf->{'pass'}, $id) };
 }
+
+sub act_send_sms { 
+	my $self = shift;
+	my @smsc = map { { key => $_->{'id'} } } 
+		@{ $self->{'kannel'}->request('status') };
+	
+	return { smsc => \@smsc };
+};
+
+sub act_send_msg {
+	my $self = shift;
+	my $msg = NetSDS::Message::SMS->new(
+		map { ( $_ => $self->call_param($_) ) } qw/from to/
+	);
+
+	my $res = $self->{'sender'}->send(
+		map { ( $_ => $self->call_param($_) ) } qw/from to smsc text/,
+		message => $msg
+	);
+
+	return { res => $res ? $res : $self->{'sender'}->errstr };
+};
 
 sub _data { 
 	my ($struct, $r, $level) = @_;

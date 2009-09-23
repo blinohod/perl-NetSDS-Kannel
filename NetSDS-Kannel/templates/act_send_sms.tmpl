@@ -1,0 +1,35 @@
+<p>
+
+<h2>Send SMS:</h2>
+
+<form id='someform' method="post" action="" accept-charset="UTF-8" enctype="multipart/form-data">
+<input type='hidden' name='s' value='kannel'>
+<input type='hidden' name='a' value='send_msg'>
+<input type='hidden' name='v' value='html'>
+
+<table class=sortable>
+	<tr>
+		<td><b>From:</b></td>
+		<td><input type=text name=from></td>
+	</tr>
+	<tr>
+		<td><b>To:</b></td>
+		<td><input type=text name=to></td>
+	</tr>
+	<tr>
+		<td><b>Smsc</b></td>
+		<td><select name=smsc>
+			<TMPL_LOOP smsc>
+				<option value='<TMPL_VAR NAME=key>'><TMPL_VAR NAME=key></option>
+			</TMPL_LOOP>
+		</td>
+	</tr>
+	<tr>
+		<td><b>Text:</b></td>
+		<td><textarea name=text></textarea></td>
+	</tr>
+	<tr>
+		<td colspan=2 align='right'><input type='submit' value='Send'></td>
+	</tr>
+</table>
+</form>
