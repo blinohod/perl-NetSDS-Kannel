@@ -1,0 +1,14 @@
+<TMPL_IF error>
+<TMPL_ELSE>
+<table>
+		<TMPL_LOOP param>
+				<tr>
+					<td width=20%><b><TMPL_VAR NAME=key><b></td>
+					<td><TMPL_IF param1><TMPL_INCLUDE param.tmpl><TMPL_ELSE><b><TMPL_VAR NAME=val></b></TMPL_IF></td>
+				</tr>
+				<tr>
+					<td colspan=2><hr /></td>
+				</tr>
+		</TMPL_LOOP>
+</table>
+</TMPL_IF>
