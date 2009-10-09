@@ -59,12 +59,14 @@ sub process {
 	
 	my ($keeprun, $start) = (1, time);
 	while ($keeprun) {
-		for my $acct_id ( grep { $accounts{$_}->{'time'} >= time } keys %accounts ) {
+		my @array = grep { $accounts{$_}->{'time'} <= time } keys %accounts;
+		sleep($self->conf->{'account_wait'}) and next unless @array;
+
+		for my $acct_id ( @array ) {
 			my $queue = join '.', 'mt', $acct_id, $self->{'channel'};
-			
 			for (1..$accounts{$acct_id}->{'bandwith'}) {
-				my $res = $self->{'queue'}->pull($queue);	
-	
+				my $res = $self->{'queue'}->pull($queue);
+				
 				if ($res) {
 					1 while (!$self->send($res) and sleep(5));
 				} else {
@@ -76,7 +78,7 @@ sub process {
 			};
 		};
 		
-		$keeprun = 0 if $start + $self->conf->{'period'};
+		$keeprun = 0 if $start + $self->conf->{'period'} > time;
 	};
 };
 
@@ -91,12 +93,12 @@ sub send {
 		coding   => $msg->coding,             # SMS coding (0 - GSM 03.38 7bit, 1 - binary, 2 - UCS2)
 		text     => $msg->ud,                 # User data as byte string
 		udh      => $msg->udh,                # User Data Header as byte string
-		dlr_mask => 3,                        # only final states
+		#dlr_mask => 3,                        # only final states
 		charset  => ( $msg->coding == COD_UCS2 ? 'UTF-8' : 'UTF-16BE' ),                  
 		priority => 0,                        # Default is non priority SMS
-		dlr_id   => $msg->message_id,
+		#dlr_id   => $msg->message_id,
 	);
-			
+	
 	$mt_msg{'mclass'} = $msg->mclass if  defined $msg->mclass;
 	return $self->{'kannel'}->send(%mt_msg);
 };
