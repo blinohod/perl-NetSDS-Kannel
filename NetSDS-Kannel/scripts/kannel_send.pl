@@ -47,15 +47,15 @@ sub accounts {
 		select uuid from auth.users where active=true");
 
 	return $self->{'dbh'}->dbh->selectall_arrayref(sprintf(
-		"select id, bandwidth from bulksms.accounts 
+		"select id, owner, bandwidth from bulksms.accounts 
 			where owner in ('%s') and current_time between mt_start and mt_finish", 
 		join "','", @$users), { Slice => {} });
 };
 
 sub process {
 	my $self = shift;
-	my %accounts = map { ($_->{'id'} => { bandwith => $_->{'bandwidth'}, 
-		time => +time } ) } @{ $self->accounts };
+	my %accounts = map { ($_->{'owner'} => { bandwith => $_->{'bandwidth'}, 
+		time => +time, id => $_->{'id'} } ) } @{ $self->accounts };
 	
 	my ($keeprun, $start) = (1, time);
 	while ($keeprun) {
@@ -63,12 +63,24 @@ sub process {
 		sleep($self->conf->{'account_wait'}) and next unless @array;
 
 		for my $acct_id ( @array ) {
-			my $queue = join '.', 'mt', $acct_id, $self->{'channel'};
+			my $queue = join '.', 'mt', $accounts{$acct_id}->{'id'}, $self->{'channel'};
 			for (1..$accounts{$acct_id}->{'bandwith'}) {
-				my $res = $self->{'queue'}->pull($queue);
+				my $sms = $self->{'queue'}->pull($queue);
 				
-				if ($res) {
-					1 while (!$self->send($res) and sleep(5));
+				if ($sms) {
+					my $keep = 1;
+					do {
+						unless($self->send($sms)) {
+							if ($self->{'kannel'}->errstr =~ /^4\d{2}\s+/) {
+								$self->{'dbh'}->call("select bulksms.discard_charge('$acct_id', 1)");
+								$keep = 0;
+							};
+						} else {
+							$self->{'dbh'}->call("select bulksms.accept_charge('$acct_id', 1)");
+							$keep = 0;
+						};
+
+					} while ($keep);
 				} else {
 					$accounts{$acct_id}->{'time'} = 
 						time + $self->conf->{'account_wait'};
