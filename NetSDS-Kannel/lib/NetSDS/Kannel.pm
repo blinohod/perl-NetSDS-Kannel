@@ -1,14 +1,15 @@
 #===============================================================================
 #
-#         FILE:  Kannel.pm
+#       MODULE:  NetSDS::Kannel
 #
 #  DESCRIPTION:  This module provides API to Kannel message structure.
 #
-#        NOTES:  This is NetSDS specific implementation
+#        NOTES:  This is NetSDS specific API implementation.
+#                It's expected that kannel configuration is standard for NetSDS.
+#
 #       AUTHOR:  Michael Bochkaryov (Rattler), <misha@rattler.kiev.ua>
 #      COMPANY:  Net.Style
-#      VERSION:  1.1
-#      CREATED:  16.06.2008 11:08:15 EEST
+#
 #===============================================================================
 
 =head1 NAME
@@ -17,25 +18,30 @@ NetSDS::Kannel - Kannel SMS gateway API
 
 =head1 SYNOPSIS
 
+	#!/usr/bin/env perl
+	
+	use 5.8.0;
+	use warnings;
+	use strict;
+
 	use NetSDS::Kannel;
-	use NetSDS::Message::SMS;
 
 	my $kannel = NetSDS::Kannel->new(
-		kannel_url => 'http://localhost:1234/sendsms',
-		kannel_user => 'sender',
-		kannel_passwd => 'secret',
-		default_smsc => 'esme-megafon',
-	);
-
-	my $sms = NetSDS::Message::SMS->new(
-		$sms_params
+		sendsms_url    => 'http://localhost:1234/sendsms',
+		sendsms_user   => 'sender',
+		sendsms_passwd => 'secret',
+		default_smsc   => 'esme-megafon',
 	);
 
 	$res = $kannel->send(
-		message => $sms,
-		smsc => 'emse-mts',
+		from     => '1234',
+		to       => '380672222111',
+		text     => 'Hallo there!',
+		smsc     => 'emse-mts',
 		priority => 3,
 	);
+
+	1;
 
 =head1 DESCRIPTION
 
@@ -60,6 +66,7 @@ use NetSDS::Util::String;
 use NetSDS::Util::Types;
 use LWP::UserAgent;
 use URI::Escape;
+use XML::LibXML;
 
 use base qw(
   NetSDS::Class::Abstract
@@ -112,13 +119,12 @@ use constant ESME_CHARGING    => 1059;     # Low billing balance (vendor specifi
 use constant ESME_CHARGING_PP => 1111;     # Low billing balance on prepaid (vendor specific)
 
 #===============================================================================
-#
 
-=head1 CLASS METHODS
+=head1 CLASS API
 
 =over
 
-=item B<new([...])> - constructor
+=item B<new(%params)> - class constructor
 
 Constructor creates Kannel API handler and set it's configuration.
 Most of these parameters may be overriden while object method calls.
@@ -152,8 +158,8 @@ sub new {
 
 	my ( $class, %params ) = @_;
 
-	my $this = $class->SUPER::new(
-		admin_url       => 'http://127.0.0.1:1300/',
+	my $self = $class->SUPER::new(
+		admin_url       => 'http://127.0.0.1:13000/',
 		admin_passwd    => '',
 		sendsms_url     => 'http://127.0.0.1:13013/cgi-bin/sendsms',
 		sendsms_user    => 'netsds',
@@ -164,9 +170,18 @@ sub new {
 		%params,
 	);
 
-	return $this;
+	# Initialize LWP user agent
+	$self->{_ua} = LWP::UserAgent->new();
+	$self->{_ua}->agent( USER_AGENT . "/$VERSION" );
 
-}
+	# Initialize XML parser
+	$self->{_xml} = XML::LibXML->new();
+	$self->{_xml}->validation(0);
+	$self->{_xml}->recover(1);
+
+	return $self;
+
+} ## end sub new
 
 __PACKAGE__->mk_accessors('admin_url');
 __PACKAGE__->mk_accessors('admin_passwd');
@@ -224,11 +239,11 @@ Example:
 
 sub send {
 
-	my ( $this, %params ) = @_;
+	my ( $self, %params ) = @_;
 
 	my %send = (
-		'username' => $this->sendsms_user,
-		'password' => $this->sendsms_passwd,
+		'username' => $self->sendsms_user,
+		'password' => $self->sendsms_passwd,
 		'charset'  => 'UTF-8',                 # Local text representation
 		'coding'   => 0,                       # 7 bit GSM 03.38
 	);
@@ -236,7 +251,7 @@ sub send {
 	# Then we override message parameters
 
 	# Set sendsms URL
-	my $send_url = $this->sendsms_url;
+	my $send_url = $self->sendsms_url;
 	if ( $params{sendsms_url} ) {
 		$send_url = $params{sendsms_url};
 	}
@@ -308,7 +323,7 @@ sub send {
 
 	# Set DLR fetching mask (see kannel documentation)
 	if ( $params{dlr_id} ) {
-		$send{'dlr-url'} = $this->make_dlr_url( msgid => $params{dlr_id} );
+		$send{'dlr-url'} = $self->make_dlr_url( msgid => $params{dlr_id} );
 
 		# Set DLR fetching mask (see kannel documentation)
 		if ( $params{dlr_mask} ) {
@@ -320,32 +335,28 @@ sub send {
 
 	# Set meta data
 	if ( $params{meta} ) {
-		$send{'meta-data'} = $this->make_meta( %{ $params{meta} } );
+		$send{'meta-data'} = $self->make_meta( %{ $params{meta} } );
 	}
 
-	# Prepare sending user agent
-	my $ua = LWP::UserAgent->new();
-	$ua->agent( USER_AGENT . "/$VERSION" );
-
 	# Set HTTP request timeout
-	my $timeout = $this->default_timeout;
+	my $timeout = $self->default_timeout;
 	if ( $params{timeout} ) {
 		$timeout = $params{timeout};
 	}
-	$ua->timeout($timeout);
+	$self->{_ua}->timeout($timeout);
 
 	# Prepare HTTP request
 	my @pairs = map $_ . '=' . $send{$_}, keys %send;
 	my $req = HTTP::Request->new( GET => $send_url . "?" . join '&', @pairs );
 
 	# Send request
-	my $res = $ua->request($req);
+	my $res = $self->{_ua}->request($req);
 
 	# Analyze response
 	if ( $res->is_success ) {
 		return $res->content;
 	} else {
-		return $this->error( $res->status_line );
+		return $self->error( $res->status_line );
 	}
 
 } ## end sub send
@@ -369,22 +380,22 @@ Message type (MO or DLR) recognized by C<type> CGI parameter that may be C<mo> o
 
 sub receive {
 
-	my ( $this, $cgi ) = @_;
+	my ( $self, $cgi ) = @_;
 
 	my %ret = ();
 
 	# Set message type (MO or DLR)
 	if ( $cgi->param('type') ) {
 		if ( $cgi->param('type') eq 'mo' ) {
-			%ret = $this->receive_mo($cgi);
+			%ret = $self->receive_mo($cgi);
 		} elsif ( $cgi->param('type') eq 'dlr' ) {
-			%ret = $this->receive_dlr($cgi);
+			%ret = $self->receive_dlr($cgi);
 		}
 
 		return %ret;
 
 	} else {
-		return $this->error("Unknown message type received");
+		return $self->error("Unknown message type received");
 	}
 
 } ## end sub receive
@@ -427,7 +438,7 @@ Imported MO message parameters returned as hash with the following keys:
 
 sub receive_mo {
 
-	my ( $this, $cgi ) = @_;
+	my ( $self, $cgi ) = @_;
 
 	my %ret = (
 		type => 'mo',
@@ -565,7 +576,7 @@ Example:
 
 sub receive_dlr {
 
-	my ( $this, $cgi ) = @_;
+	my ( $self, $cgi ) = @_;
 
 	my %ret = (
 		type => 'dlr',
@@ -620,7 +631,7 @@ sub receive_dlr {
 
 	# Process return code if not success
 	if ( $ret{dlr_msg} =~ /^NACK\/(\d+)\// ) {
-		$this->{reject_code} = $1;
+		$self->{reject_code} = $1;
 	}
 
 	return %ret;
@@ -643,13 +654,13 @@ Returns: URI escaped DLR URL
 
 sub make_dlr_url {
 
-	my ( $this, %params ) = @_;
+	my ( $self, %params ) = @_;
 
 	# Set reference to MT message Id for identification
 	my $msgid = $params{msgid};
 
 	# Set DLR base URL from object property or method parameter
-	my $dlr_url = $this->{dlr_url};
+	my $dlr_url = $self->{dlr_url};
 	if ( $params{dlr_url} ) { $dlr_url = $params{dlr_url}; }
 
 	$dlr_url .= "?type=dlr&msgid=$msgid&smsid=%I&from=%p&to=%P&time=%t&unixtime=%T&dlr=%d&dlrmsg=%A";
@@ -675,7 +686,7 @@ Returns: URI escaped string
 
 Example:
 
-	my $meta = $this->make_meta(
+	my $meta = $self->make_meta(
 		charging_id => '0',
 	);
 
@@ -687,7 +698,7 @@ This will return: %3Fsmpp%3Fcharging_id%3D0
 
 sub make_meta {
 
-	my ( $this, %params ) = @_;
+	my ( $self, %params ) = @_;
 
 	my $meta_str = '?smpp?';    # FIXME: only 'smpp' group allowed
 
@@ -697,6 +708,332 @@ sub make_meta {
 	return conv_str_uri($meta_str);
 
 }
+
+#***********************************************************************
+
+=item B<status()> - retrieve Kannel status
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub status {
+
+	my ($self) = @_;
+
+	my $res = $self->{_ua}->get( $self->admin_url . "status.xml" );
+	if ( $res->is_success ) {
+
+		# Parse XML and retrieve DOM structure
+		#
+		# NOTE: we use eval{} because of XML::LibXML calls die() on parser errors
+		my $doc = undef;
+		eval { $doc = $self->{_xml}->parse_string( $res->content )->documentElement(); };
+
+		# Catch exceptions
+		if ($@) {
+			return $self->error("Can't parse XML from Kannel API");
+		}
+
+		# ==========================
+		# Preparing result structure
+
+		# Version string
+		my $result = {
+			version => $doc->findvalue('/gateway/version'),
+		};
+
+		# Total Kannel status and uptime
+		#
+		# Sample XML part from status.xml API
+		# <status>suspended, uptime 32d 7h 26m 43s</status>
+		if ( $doc->findvalue('/gateway/status') =~ /^(\S+),\s+uptime\s+(.+)$/ ) {
+			$result->{status} = $1;
+			$result->{uptime} = $2;
+		}
+
+		# Common SMS information
+		$result->{sms} = {
+			received_total  => $doc->findvalue('/gateway/sms/received/total'),
+			received_queued => $doc->findvalue('/gateway/sms/received/queued'),
+			sent_total      => $doc->findvalue('/gateway/sms/sent/total'),
+			sent_queued     => $doc->findvalue('/gateway/sms/sent/queued'),
+			storesize       => $doc->findvalue('/gateway/sms/storesize'),
+			inbound         => $doc->findvalue('/gateway/sms/inbound'),
+			outbound        => $doc->findvalue('/gateway/sms/outbound'),
+		};
+
+		# Common DLR information
+		$result->{dlr} = {
+			queued  => $doc->findvalue('/gateway/dlr/queued'),
+			storage => $doc->findvalue('/gateway/dlr/storage'),
+		};
+
+		# SMSC connections information
+		$result->{'smsc'} = [];
+
+		foreach ( $doc->findnodes('/gateway/smscs/smsc') ) {
+			my $smsc = {
+				name     => $_->findvalue('name'),
+				id       => $_->findvalue('id'),
+				status   => $_->findvalue('status'),
+				received => $_->findvalue('received'),
+				sent     => $_->findvalue('sent'),
+				failed   => $_->findvalue('failed'),
+				queued   => $_->findvalue('queued'),
+			};
+			if ( $smsc->{status} =~ /online\s+(.+)/ ) {
+				$smsc->{status} = 'online';
+				$smsc->{uptime} = $1;
+			}
+
+			push @{ $result->{'smsc'} }, $smsc;
+		}
+
+		return $result;
+
+	} ## end if ( $res->is_success )
+
+	else {
+		return $self->error( "Can't retrieve Kannel status: " . $res->status_line );
+	}
+
+} ## end sub status
+
+#***********************************************************************
+
+=item B<store_status()> - retrieve message queue status
+
+Not implemented yet.
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub store_status {
+
+	my ($self) = @_;
+
+}
+
+#***********************************************************************
+
+=item B<shutdown()> - bring down Kannel
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub shutdown {
+
+	my ($self) = @_;
+
+	return $self->_send_cmd('shutdown');
+
+}
+
+#***********************************************************************
+
+=item B<suspend()> - switch Kannel to 'suspended' state
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub suspend {
+
+	my ($self) = @_;
+
+	return $self->_send_cmd('suspend');
+
+}
+
+#***********************************************************************
+
+=item B<isolate()> - switch Kannel to 'isolated' state
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub isolate {
+
+	my ($self) = @_;
+
+	return $self->_send_cmd('isolate');
+
+}
+
+#***********************************************************************
+
+=item B<resume()> - resume Kannel to 'online' state
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub resume {
+
+	my ($self) = @_;
+
+	return $self->_send_cmd('resume');
+
+}
+
+#***********************************************************************
+
+=item B<restart()> - whole bearerbox restart
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub restart {
+
+	my ($self) = @_;
+
+	return $self->_send_cmd('restart');
+
+}
+
+#***********************************************************************
+
+=item B<flush_dlr()> - flush queued DLR if Kannel in 'suspended' state
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub flush_dlr {
+
+	my ($self) = @_;
+
+	return $self->_send_cmd('flush-dlr');
+
+}
+
+#***********************************************************************
+
+=item B<reload_lists()> - reload black/white lists
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub reload_lists {
+
+	my ($self) = @_;
+
+	return $self->_send_cmd('reload-lists');
+
+}
+
+#***********************************************************************
+
+=item B<log_level($level)> - change Kannel log-level
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub log_level {
+
+	my ( $self, $level ) = @_;
+
+	return $self->_send_cmd( 'log-level', level => $level );
+
+}
+
+#***********************************************************************
+
+=item B<start_smsc($smsc)> - switch on SMSC connection
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub start_smsc {
+
+	my ( $self, $smsc ) = @_;
+
+	return $self->_send_cmd( 'start-smsc', smsc => $smsc );
+
+}
+
+#***********************************************************************
+
+=item B<stop_smsc($smsc)> - switch off SMSC connection
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub stop_smsc {
+
+	my ( $self, $smsc ) = @_;
+
+	return $self->_send_cmd( 'stop-smsc', smsc => $smsc );
+
+}
+
+#***********************************************************************
+
+=item B<add_smsc($smsc)> - add new SMSC connection
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub add_smsc {
+
+	my ( $self, $smsc ) = @_;
+
+	return $self->_send_cmd( 'add-smsc', smsc => $smsc );
+
+}
+
+#***********************************************************************
+
+=item B<remove_smsc($smsc)> - remove SMSC connection
+
+=cut
+
+#-----------------------------------------------------------------------
+
+sub remove_smsc {
+
+	my ( $self, $smsc ) = @_;
+
+	return $self->_send_cmd( 'remove-smsc', smsc => $smsc );
+
+}
+
+sub _send_cmd {
+
+	my ( $self, $cmd, %params ) = @_;
+
+	# Prepare base URL with administrative URL and password
+	my $url = $self->admin_url . "$cmd?password=" . $self->admin_passwd;
+
+	# Add optional parameters
+	foreach ( keys %params ) {
+		$url .= "&" . $_ . "=" . $params{$_};
+	}
+
+	# Prepare and send HTTP request to Kannel admin API
+	my $req = HTTP::Request->new( GET => $url );
+	my $res = $self->{_ua}->request($req);
+
+	# Analyze HTTP response
+	if ( $res->is_success ) {
+		# OK - send result data "as is"
+		return $res->content;
+	} else {
+		# Error - send error string
+		return $self->error( $res->status_line );
+	}
+
+} ## end sub _send_cmd
 
 1;
 
@@ -708,21 +1045,43 @@ __END__
 
 See Nibelite kannel API
 
-=head1 BUGS
-
-Unknown yet
-
 =head1 SEE ALSO
 
-Kannel User Guide at http://www.kannel.org/download/1.4.1/userguide-1.4.1/userguide.html
+=over
+ 
+=item * L<NetSDS::Class::Abstract> - base NetSDS class
+
+=item * L<http://www.kannel.org/download/1.4.3/userguide-1.4.3/userguide.html> - Kannel User Guide
+
+=back
 
 =head1 TODO
 
-None
+1. Add PPG support.
+
+2. Add OTA support.
 
 =head1 AUTHOR
 
 Michael Bochkaryov <misha@rattler.kiev.ua>
+
+=head1 LICENSE
+
+Copyright (C) 2008-2009 Net Style Ltd.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 =cut
 
