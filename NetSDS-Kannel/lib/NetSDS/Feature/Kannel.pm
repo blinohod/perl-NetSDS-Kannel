@@ -1,22 +1,51 @@
 #===============================================================================
 #
-#         FILE:  Kannel.pm
+#       MODULE:  NetSDS::Feature::Kannel
 #
-#  DESCRIPTION:  NetSDS::Feature::Kannel - kannel application feature
+#  DESCRIPTION:  Kannel application feature
 #
 #        NOTES:  ---
 #       AUTHOR:  Michael Bochkaryov (RATTLER), <misha@rattler.kiev.ua>
 #      COMPANY:  Net.Style
 #      VERSION:  1.0
-#      CREATED:  07.09.2008 21:26:08 EEST
+#
 #===============================================================================
+
 =head1 NAME
 
 NetSDS::Feature::Kannel - kannel application feature
 
 =head1 SYNOPSIS
 
-	use NetSDS::;
+	# *****************************************
+	# Configuration file fragment
+
+	<feature smsgw>
+		class = NetSDS::Feature::Kannel
+		sendsms_url = http://10.0.1.2:13013/cgi-bin/sendsms
+		sendsms_user = netsds
+		sendsms_passwd = topsecret
+	</feture>
+	
+
+	# *****************************************
+	# Application
+	
+	SMSApp->run(
+		auto_features => 1,
+	);
+
+	package SMSApp;
+	
+	sub process {
+		...
+		$self->sms->send(
+			from => '1234',
+			to => '380501234567',
+		);
+	}
+
+	1;
 
 =head1 DESCRIPTION
 
@@ -37,8 +66,8 @@ use base qw(NetSDS::Class::Abstract);
 use version; our $VERSION = "1.100";
 
 #===============================================================================
-#
-=head1 CLASS METHODS
+
+=head1 CLASS API
 
 =over
 
@@ -51,7 +80,7 @@ Constructor
 =cut
 
 #-----------------------------------------------------------------------
-sub new {
+sub init {
 
 	my ( $class, $app, $conf ) = @_;
 
@@ -70,17 +99,19 @@ __END__
 
 =back
 
-=head1 EXAMPLES
-
-None
-
-=head1 BUGS
-
-Unknown yet
-
 =head1 SEE ALSO
 
-None
+=over
+
+=item * L<NetSDS::Kannel>
+
+=item * L<NetSDS::Feature>
+
+=item * L<NetSDS::App>
+
+=item * L<http://www.kannel.org/>
+
+=back
 
 =head1 TODO
 
@@ -90,6 +121,23 @@ None
 
 Michael Bochkaryov <misha@rattler.kiev.ua>
 
-=cut
+=head1 LICENSE
 
+Copyright (C) 2008-2009 Net Style Ltd.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+=cut
 
