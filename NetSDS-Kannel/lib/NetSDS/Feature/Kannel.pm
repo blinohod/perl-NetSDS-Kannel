@@ -4,10 +4,8 @@
 #
 #  DESCRIPTION:  Kannel application feature
 #
-#        NOTES:  ---
 #       AUTHOR:  Michael Bochkaryov (RATTLER), <misha@rattler.kiev.ua>
 #      COMPANY:  Net.Style
-#      VERSION:  1.0
 #
 #===============================================================================
 
@@ -63,7 +61,7 @@ use warnings;
 use NetSDS::Kannel;
 use base qw(NetSDS::Class::Abstract);
 
-use version; our $VERSION = "1.100";
+use version; our $VERSION = "1.300";
 
 #===============================================================================
 

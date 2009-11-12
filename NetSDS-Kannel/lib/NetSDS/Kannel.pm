@@ -73,7 +73,7 @@ use base qw(
   Exporter
 );
 
-use version; our $VERSION = "1.200";
+use version; our $VERSION = "1.300";
 
 use constant USER_AGENT => 'NetSDS Kannel API';
 
