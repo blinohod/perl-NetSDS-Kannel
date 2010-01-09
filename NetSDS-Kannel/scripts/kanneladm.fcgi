@@ -9,10 +9,6 @@ Kanneladm->run( conf_file => 'kanneladm-service.conf' );
 
 package Kanneladm;
 
-use lib qw( /home/yana/NetSDS/NetSDS-ContactDB/lib
-	/home/yana/admin/NetSDS-Admin/NetSDS-Admin/lib
-	/home/yana/kannel/perl-NetSDS-Kannel/NetSDS-Kannel/lib);
-
 use NetSDS::Kannel::Admin;
 use NetSDS::Kannel;
 use NetSDS::Message::SMS;
