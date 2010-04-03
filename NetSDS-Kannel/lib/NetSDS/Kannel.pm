@@ -19,7 +19,7 @@ NetSDS::Kannel - Kannel SMS gateway API
 =head1 SYNOPSIS
 
 	#!/usr/bin/env perl
-	
+
 	use 5.8.0;
 	use warnings;
 	use strict;
@@ -83,6 +83,7 @@ our @EXPORT = qw(
   STATE_ENROUTE
   STATE_ACCEPTED
   STATE_REJECTED
+
   ESME_RINVMSGLEN
   ESME_RINVCMDID
   ESME_RINVBNDSTS
@@ -96,6 +97,29 @@ our @EXPORT = qw(
   ESME_CHARGING
 );
 
+=head1 CONSTANTS
+
+=head2 Message Delivery Status
+
+This constants represent status of message delivery and are
+used in DLR processing procedures.
+
+=over
+
+=item * B<STATE_DELIVERED> - message delivered OK
+
+=item * B<STATE_UNDELIVERABLE> - delivery failed
+
+=item * B<STATE_ENROUTE> - message is queued on SMSC
+
+=item * B<STATE_ACCEPTED> - message accepted by SMSC
+
+=item * B<STATE_REJECTED> - message rejected by SMSC
+
+=back
+
+=cut
+
 # SMS delivery states
 use constant STATE_DELIVERED     => 1;     # Delivered to MS
 use constant STATE_UNDELIVERABLE => 2;     # Undeliverable
@@ -103,20 +127,29 @@ use constant STATE_ENROUTE       => 4;     # Queued on SMSC
 use constant STATE_ACCEPTED      => 8;     # Received by SMSC
 use constant STATE_REJECTED      => 16;    # Rejected by SMSC
 
-# Reject codes from SMSC
+=head2 Error status on ESME
 
-use constant ESME_RINVMSGLEN  => 1;        # Wrong length
-use constant ESME_RINVCMDID   => 3;        # Wrong SMPP command
+=over
+
+=item * B<ESME_RINVMSGLEN> - wrong message length
+
+=back
+
+=cut
+
+# Reject codes from SMSC
+use constant ESME_RINVMSGLEN  => 1;       # Wrong length
+use constant ESME_RINVCMDID   => 3;       # Wrong SMPP command
 use constant ESME_RINVBNDSTS  => 4;
 use constant ESME_RSYSERR     => 8;
-use constant ESME_RINVDSTADR  => 11;       # Invalid destination address
+use constant ESME_RINVDSTADR  => 11;      # Invalid destination address
 use constant ESME_RMSGQFUL    => 20;
 use constant ESME_RTHROTTLED  => 88;
 use constant ESME_RUNKNOWNERR => 255;
 use constant ESME_RTIMEOUT    => 1057;
-use constant ESME_LICENSE     => 1058;     # License restriction (vendor specific)
-use constant ESME_CHARGING    => 1059;     # Low billing balance (vendor specific)
-use constant ESME_CHARGING_PP => 1111;     # Low billing balance on prepaid (vendor specific)
+use constant ESME_LICENSE     => 1058;    # License restriction (vendor specific)
+use constant ESME_CHARGING    => 1059;    # Low billing balance (vendor specific)
+use constant ESME_CHARGING_PP => 1111;    # Low billing balance on prepaid (vendor specific)
 
 #===============================================================================
 
@@ -148,8 +181,6 @@ B<Sending SMS API parameters:>
 * default_smsc - default SMSC identifier for sending SMS
 
 * default_timeout - default sending TCP timeout
-
-=back
 
 =cut
 
@@ -183,20 +214,92 @@ sub new {
 
 } ## end sub new
 
+#***********************************************************************
+
+=item B<admin_url()> - get/set URL of admin API
+
+=cut
+
+#-----------------------------------------------------------------------
+
 __PACKAGE__->mk_accessors('admin_url');
-__PACKAGE__->mk_accessors('admin_passwd');
-__PACKAGE__->mk_accessors('sendsms_url');
-__PACKAGE__->mk_accessors('sendsms_user');
-__PACKAGE__->mk_accessors('sendsms_passwd');
-__PACKAGE__->mk_accessors('dlr_url');
-__PACKAGE__->mk_accessors('default_smsc');
-__PACKAGE__->mk_accessors('default_timeout');
 
 #***********************************************************************
 
-=head1 OBJECT METHODS
+=item B<admin_passwd()> - get/set administrative API password
 
-=over
+=cut
+
+#-----------------------------------------------------------------------
+
+__PACKAGE__->mk_accessors('admin_passwd');
+
+#***********************************************************************
+
+=item B<sendsms_url()> - get/set URL of sendsms HTTP API
+
+=cut
+
+#-----------------------------------------------------------------------
+
+__PACKAGE__->mk_accessors('sendsms_url');
+
+#***********************************************************************
+
+=item B<sendsms_user()> - get/set sendsms API username
+
+=cut
+
+#-----------------------------------------------------------------------
+
+__PACKAGE__->mk_accessors('sendsms_user');
+
+#***********************************************************************
+
+=item B<sendsms_passwd()> - get/set sendsms API password
+
+=cut
+
+#-----------------------------------------------------------------------
+
+__PACKAGE__->mk_accessors('sendsms_passwd');
+
+#***********************************************************************
+
+=item B<dlr_url()> - get/set default URL to send DLR
+
+=cut
+
+#-----------------------------------------------------------------------
+
+__PACKAGE__->mk_accessors('dlr_url');
+
+#***********************************************************************
+
+=item B<default_smsc()> - get/set default SMSC Id to use
+
+=cut
+
+#-----------------------------------------------------------------------
+
+__PACKAGE__->mk_accessors('default_smsc');
+
+#***********************************************************************
+
+=item B<default_timeout()> - get/set default sendsms HTTP timeout
+
+Example:
+
+	# Set default HTTP timeout as 20 seconds
+	$kannel->default_timeout(20);
+
+=cut
+
+#-----------------------------------------------------------------------
+
+__PACKAGE__->mk_accessors('default_timeout');
+
+#***********************************************************************
 
 =item B<send(%parameters)> - send MT SM message to Kannel
 
@@ -219,6 +322,8 @@ Parameters (mostly the same as in Kannel sendsms API):
 * smsc - target SMSC (overrides default one)
 
 * mclass - message class if necessary (0 for flash sms)
+
+* mwi - message waiting indicator
 
 * validity - TTL for MO SM in minutes
 
@@ -294,6 +399,11 @@ sub send {
 	# Set message mclass
 	if ( defined $params{mclass} ) {
 		$send{mclass} = $params{mclass};
+	}
+
+	# Set message waiting indicator
+	if ( defined $params{mwi} ) {
+		$send{mwi} = $params{mwi};
 	}
 
 	# Set data coding
@@ -1048,7 +1158,7 @@ See Nibelite kannel API
 =head1 SEE ALSO
 
 =over
- 
+
 =item * L<NetSDS::Class::Abstract> - base NetSDS class
 
 =item * L<http://www.kannel.org/download/1.4.3/userguide-1.4.3/userguide.html> - Kannel User Guide
