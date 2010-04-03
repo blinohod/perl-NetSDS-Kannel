@@ -1,4 +1,5 @@
 %define module NetSDS-Kannel
+%def_without test
 
 Name: perl-%module
 Version: 1.300
@@ -31,8 +32,8 @@ NetSDS::Kannel provides simple perl API to Kannel SMSC gateway.
 %files
 %perl_vendor_privlib/NetSDS*
 %perl_vendor_man3dir/*
-%_bindir/kannel-admin
-%_man1dir/*
+#%_bindir/kannel-admin
+#%_man1dir/*
 %doc samples
 
 %changelog

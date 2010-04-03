@@ -1,15 +1,93 @@
-<TMPL_IF error>
-ERROR!!!
-<TMPL_ELSE>
-<table>
-		<TMPL_LOOP param>
-				<tr>
-					<td width=20%><b><TMPL_VAR NAME=key><b></td>
-					<td><TMPL_IF param1><TMPL_INCLUDE param.tmpl><TMPL_ELSE><b><TMPL_VAR NAME=val></b></TMPL_IF></td>
-				</tr>
-				<tr>
-					<td colspan=2><hr /></td>
-				</tr>
-		</TMPL_LOOP>
+<h1>Kannel SMS Gateway Status</h1>
+
+<style type="text/css">
+table.body {
+	font-size: 12px;
+	border-collapse: collapse;
+	border:  solid #aaaaaa 1px;
+	width: 100%;
+}
+table.body td {
+	padding: 2px;
+	margin: 0px;
+	border-bottom:  solid #aaaaaa 1px;
+}
+table.body td pre {
+	font-size: 10px;
+}
+table.body th {
+	background: #dddddd;
+	border-bottom:  solid #aaaaaa 1px;
+}
+</style>
+
+<script language="JavaScript">
+$(document).ready(function() {
+	tm = 1;
+	setInterval("uuu()", 1000);
+});
+
+function uuu() {
+	tm = tm + 1;
+	$("#timer").text(tm);
+}
+</script>
+
+<!-- TM: <div id="timer"></div> -->
+
+<div id="info" style="font-size: 11px;">
+</div>
+
+<table class="body">
+
+<!--tr><td colspan="3"><pre><TMPL_VAR NAME="version"></pre></td></tr-->
+
+<tr><td colspan="3">
+<input class="async-call" type="button" value="Suspend">
+<input type="button" value="Isolate">
+<input type="button" value="Resume">
+<input type="button" value="Restart">
+<input type="button" value="Shutdown">
+<input type="button" value="Flush DLR">
+<input type="button" value="Reload lists">
+</td></tr>
+
+<tr><td>Status:</td><td colspan="2"><TMPL_VAR NAME="status"></td></tr>
+<tr><td>Uptime:</td><td colspan="2"><TMPL_VAR NAME="uptime"></td></tr>
+
+<tr><th colspan="3"><b>SMS common statistics</b></td></tr>
+
+<tr><td>Sent:</td><td colspan="2"><TMPL_VAR NAME="sms_sent_total"> (<TMPL_VAR NAME="sms_sent_queued"> queued)</td></tr>
+
+<tr><td>Received:</td><td colspan="2"><TMPL_VAR NAME="sms_received_total"> (<TMPL_VAR NAME="sms_received_queued"> queued)</td></tr>
+
+<tr><td>DLR queue:</td><td colspan="2"><TMPL_VAR NAME="dlr_queued"> (storage <TMPL_VAR NAME="dlr_storage">)</td></tr>
+
+<tr><td>Inbound rate (PDU/sec):</td><td colspan="2"><TMPL_VAR NAME="sms_inbound"></td></tr>
+<tr><td>Outbound rate (PDU/sec):</td><td colspan="2"><TMPL_VAR NAME="sms_outbound"></td></tr>
+
+<tr><th colspan="3"><b>SMSC connections</b></td></tr>
+
+<TMPL_LOOP smsc>
+<tr>
+<td><TMPL_VAR NAME=name></td>
+<td>
+<p>
+ID: <TMPL_VAR NAME=id><br>
+Status: <TMPL_VAR NAME=status><br>
+Sent: <TMPL_VAR NAME=sent><br>
+Received: <TMPL_VAR NAME=received><br>
+Queued: <TMPL_VAR NAME=queued><br>
+Failed: <TMPL_VAR NAME=failed><br>
+</p>
+</td>
+
+<td>
+<input class="async-call" href="?s=<TMPL_VAR name=SERVICE>&v=html&a=stop_smsc&smsc=<TMPL_VAR name=id>" type="button" value="stop"/>
+<input class="async-call" href="?s=<TMPL_VAR name=SERVICE>&v=html&a=start_smsc&smsc=<TMPL_VAR name=id>" type="button" value="start"/>
+</td>
+</tr>
+
+</TMPL_LOOP>
+
 </table>
-</TMPL_IF>

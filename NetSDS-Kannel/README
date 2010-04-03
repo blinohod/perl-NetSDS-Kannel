@@ -2,25 +2,30 @@ NAME
     NetSDS::Kannel - Kannel SMS gateway API
 
 SYNOPSIS
+            #!/usr/bin/env perl
+        
+            use 5.8.0;
+            use warnings;
+            use strict;
+
             use NetSDS::Kannel;
-            use NetSDS::Message::SMS;
 
             my $kannel = NetSDS::Kannel->new(
-                    kannel_url => 'http://localhost:1234/sendsms',
-                    kannel_user => 'sender',
-                    kannel_passwd => 'secret',
-                    default_smsc => 'esme-megafon',
-            );
-
-            my $sms = NetSDS::Message::SMS->new(
-                    $sms_params
+                    sendsms_url    => 'http://localhost:1234/sendsms',
+                    sendsms_user   => 'sender',
+                    sendsms_passwd => 'secret',
+                    default_smsc   => 'esme-megafon',
             );
 
             $res = $kannel->send(
-                    message => $sms,
-                    smsc => 'emse-mts',
+                    from     => '1234',
+                    to       => '380672222111',
+                    text     => 'Hallo there!',
+                    smsc     => 'emse-mts',
                     priority => 3,
             );
+
+            1;
 
 DESCRIPTION
     "NetSDS::Kannel" module provides API to Kannel SMS gateway.
@@ -33,8 +38,8 @@ DESCRIPTION
     This modules uses LWP to send messages and CGI.pm to process messages
     from Kannel.
 
-CLASS METHODS
-    new([...]) - constructor
+CLASS API
+    new(%params) - class constructor
         Constructor creates Kannel API handler and set it's configuration.
         Most of these parameters may be overriden while object method calls.
 
@@ -68,13 +73,21 @@ OBJECT METHODS
 
         * to - destination address (overrides message)
 
-        * text - message text (URI escaped)
+        * text - message text (byte string)
+
+        * udh - user data header (byte string)
 
         * charset - charset of text
 
         * coding - 0 for GSM 03.38, 1 for binary, 2 for UCS2
 
         * smsc - target SMSC (overrides default one)
+
+        * mclass - message class if necessary (0 for flash sms)
+
+        * validity - TTL for MO SM in minutes
+
+        * deferred - timeout for delayed delivery
 
         Example:
 
@@ -180,25 +193,59 @@ OBJECT METHODS
 
         Example:
 
-                my $meta = $this->make_meta(
+                my $meta = $self->make_meta(
                         charging_id => '0',
                 );
 
         This will return: %3Fsmpp%3Fcharging_id%3D0
 
+    status() - retrieve Kannel status
+    store_status() - retrieve message queue status
+        Not implemented yet.
+
+    shutdown() - bring down Kannel
+    suspend() - switch Kannel to 'suspended' state
+    isolate() - switch Kannel to 'isolated' state
+    resume() - resume Kannel to 'online' state
+    restart() - whole bearerbox restart
+    flush_dlr() - flush queued DLR if Kannel in 'suspended' state
+    reload_lists() - reload black/white lists
+    log_level($level) - change Kannel log-level
+    start_smsc($smsc) - switch on SMSC connection
+    stop_smsc($smsc) - switch off SMSC connection
+    add_smsc($smsc) - add new SMSC connection
+    remove_smsc($smsc) - remove SMSC connection
+
 EXAMPLES
     See Nibelite kannel API
 
-BUGS
-    Unknown yet
-
 SEE ALSO
-    Kannel User Guide at
-    http://www.kannel.org/download/1.4.1/userguide-1.4.1/userguide.html
+    * NetSDS::Class::Abstract - base NetSDS class
+    * <http://www.kannel.org/download/1.4.3/userguide-1.4.3/userguide.html>
+    - Kannel User Guide
 
 TODO
-    None
+    1. Add PPG support.
+
+    2. Add OTA support.
 
 AUTHOR
     Michael Bochkaryov <misha@rattler.kiev.ua>
+
+LICENSE
+    Copyright (C) 2008-2009 Net Style Ltd.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or (at your
+    option) any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+    Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
