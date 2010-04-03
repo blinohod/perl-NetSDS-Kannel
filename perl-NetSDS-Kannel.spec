@@ -2,7 +2,7 @@
 %def_without test
 
 Name: perl-%module
-Version: 1.300
+Version: 1.301
 Release: alt1
 
 Summary: NetSDS Kannel API
@@ -37,6 +37,10 @@ NetSDS::Kannel provides simple perl API to Kannel SMSC gateway.
 %doc samples
 
 %changelog
+* Sat Apr 03 2010 Michael Bochkaryov <misha@altlinux.ru> 1.301-alt1
+- Documentation improvements
+- MWI support in send() method
+
 * Sat Jan 09 2010 Michael Bochkaryov <misha@altlinux.ru> 1.300-alt1
 - 1.300
 
