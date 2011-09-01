@@ -382,7 +382,7 @@ sub send {
 	}
 
 	# Set message text
-	if ( $params{text} ) {
+	if (defined $params{text} ) {
 		$send{text} = uri_escape( $params{text} );
 	}
 
@@ -589,12 +589,12 @@ sub receive_mo {
 	}
 
 	# Set message text (text=%a)
-	if ( $cgi->param('text') ) {
+	if (defined $cgi->param('text') ) {
 		$ret{text} = $cgi->param('text');
 	}
 
 	# Set binary message (bin=%b)
-	if ( $cgi->param('bin') ) {
+	if (defined $cgi->param('bin') ) {
 		$ret{bin} = $cgi->param('bin');
 	}
 
