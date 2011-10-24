@@ -3,7 +3,7 @@
 
 Name: perl-%module
 Version: 2.000
-Release: alt0
+Release: alt1
 
 Summary: NetSDS Kannel API
 Group: Development/Perl
@@ -15,7 +15,12 @@ Source: %module-%version.tar.gz
 Url: http://www.netstyle.com.ua/
 
 # Automatically added by buildreq on Thu Jul 30 2009 (-bi)
-BuildRequires: perl-Module-Build perl-NetSDS perl-NetSDS-Util perl-Test-Pod perl-Test-Pod-Coverage perl-XML-LibXML perl-libwww
+BuildRequires: perl-Module-Build 
+BuildRequires: perl-NetSDS 
+BuildRequires: perl-Test-Pod 
+BuildRequires: perl-Test-Pod-Coverage 
+BuildRequires: perl-XML-LibXML 
+BuildRequires: perl-libwww
 
 %description
 NetSDS::Kannel provides simple perl API to Kannel SMSC gateway.
@@ -34,6 +39,9 @@ NetSDS::Kannel provides simple perl API to Kannel SMSC gateway.
 %doc samples
 
 %changelog
+* Mon Oct 24 2011 Dmitriy Kruglikov <dkr@altlinux.ru> 2.000-alt1
+- Removed perl-NetSDS-Util from BuildRequres
+
 * Fri Oct 21 2011 Michael Bochkaryov <misha@altlinux.ru> 2.000-alt0
 - Fixed empty messages processing
 - No man pages in RPM
