@@ -773,7 +773,7 @@ sub make_dlr_url {
 	my $dlr_url = $self->{dlr_url};
 	if ( $params{dlr_url} ) { $dlr_url = $params{dlr_url}; }
 
-	$dlr_url .= "?type=dlr&msgid=$msgid&smsid=%I&from=%p&to=%P&time=%t&unixtime=%T&dlr=%d&dlrmsg=%A";
+	$dlr_url .= "?type=dlr&msgid=$msgid&smsid=%F&from=%p&to=%P&time=%t&unixtime=%T&dlr=%d&dlrmsg=%A";
 
 	return conv_str_uri($dlr_url);
 
