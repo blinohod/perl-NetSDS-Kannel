@@ -2,7 +2,7 @@
 %def_without test
 
 Name: perl-%module
-Version: 2.000
+Version: 2.0.1
 Release: alt1
 
 Summary: NetSDS Kannel API
@@ -39,6 +39,11 @@ NetSDS::Kannel provides simple perl API to Kannel SMSC gateway.
 %doc samples
 
 %changelog
+* Sun Feb 05 2012 Michael Bochkaryov <misha@altlinux.ru> 2.0.1-alt1
+- Fix DLR URL to send message-ID from SMSC instead of internal Kannel
+- Build.PL processed with perltidy
+- Versioning changed to three-digit pattern
+
 * Mon Oct 24 2011 Dmitriy Kruglikov <dkr@altlinux.ru> 2.000-alt1
 - Removed perl-NetSDS-Util from BuildRequres
 

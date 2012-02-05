@@ -1,16 +1,3 @@
-#===============================================================================
-#
-#       MODULE:  NetSDS::Kannel
-#
-#  DESCRIPTION:  This module provides API to Kannel message structure.
-#
-#        NOTES:  This is NetSDS specific API implementation.
-#                It's expected that kannel configuration is standard for NetSDS.
-#
-#       AUTHOR:  Michael Bochkaryov (Rattler), <misha@rattler.kiev.ua>
-#      COMPANY:  Net.Style
-#
-#===============================================================================
 
 =head1 NAME
 
@@ -73,7 +60,7 @@ use base qw(
   Exporter
 );
 
-use version; our $VERSION = '1.301';
+use version; our $VERSION = version->declare('v2.0.1');
 
 use constant USER_AGENT => 'NetSDS Kannel API';
 
@@ -382,7 +369,7 @@ sub send {
 	}
 
 	# Set message text
-	if (defined $params{text} ) {
+	if ( defined $params{text} ) {
 		$send{text} = uri_escape( $params{text} );
 	}
 
@@ -589,12 +576,12 @@ sub receive_mo {
 	}
 
 	# Set message text (text=%a)
-	if (defined $cgi->param('text') ) {
+	if ( defined $cgi->param('text') ) {
 		$ret{text} = $cgi->param('text');
 	}
 
 	# Set binary message (bin=%b)
-	if (defined $cgi->param('bin') ) {
+	if ( defined $cgi->param('bin') ) {
 		$ret{bin} = $cgi->param('bin');
 	}
 
@@ -1177,7 +1164,7 @@ Michael Bochkaryov <misha@rattler.kiev.ua>
 
 =head1 LICENSE
 
-Copyright (C) 2008-2009 Net Style Ltd.
+Copyright (C) 2008-2012 Net Style Ltd.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
