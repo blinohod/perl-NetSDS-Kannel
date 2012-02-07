@@ -1,0 +1,8 @@
+NetSDS::Kannel is an open source Perl API to Kannel SMS Gateway.
+
+===============================================================
+
+This package is deprecated due to merge into core perl-NetSDS:
+
+https://github.com/blinohod/perl-NetSDS
+
